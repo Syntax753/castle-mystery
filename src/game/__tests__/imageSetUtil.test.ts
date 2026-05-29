@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import imageSetReferencedImagesText from './fixtures/image-set-referenced-images.md?raw';
 import { loadLevelFromText } from '@/levelLoading/levelUtil';
 import { createImageSetFromLevel } from '../imageSetUtil';
+import { BUILT_IN_TILE_URLS } from '../tileKitUtil';
 
 describe('imageSetUtil.ts', () => {
   afterEach(() => {
@@ -21,10 +22,11 @@ describe('imageSetUtil.ts', () => {
     const level = loadLevelFromText(imageSetReferencedImagesText);
     const imageSet = await createImageSetFromLevel(level);
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(3 + BUILT_IN_TILE_URLS.length);
     expect(imageSet.has('/sprites/key.png')).toBe(true);
     expect(imageSet.has('/sprites/kingFace.png')).toBe(true);
     expect(imageSet.has('/sprites/queenFace.png')).toBe(true);
+    BUILT_IN_TILE_URLS.forEach(tileUrl => expect(imageSet.has(tileUrl)).toBe(true));
   });
 
   it('omits image URLs whose fetch returns a non-OK response', async () => {

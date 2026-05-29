@@ -6,7 +6,8 @@ import { COLOR_ACTIVE_ROOM_FILL, COLOR_BLACK, COLOR_DARK_GRAY, COLOR_INACTIVE_RO
 import { gameToCanvasPosition } from "./drawUtil";
 import { drawTemporaryRightWallDoorVectorOverlay, getExitCanvasRect } from "./exitDrawUtil";
 import { drawRoomItem, findVisibleRoomItemsInDrawOrder } from "./itemDrawUtil";
-import { drawFloorPanel, drawRightWallPanel } from "./roomPanelDrawUtil";
+import { drawRoomSideView } from "./roomSideViewDrawUtil";
+import { deriveRoomComposition } from "../roomCompositionUtil";
 import { drawRoomStairs } from "./stairDrawUtil";
 import Character from "../types/Character";
 import Item from "../types/Item";
@@ -23,8 +24,8 @@ const DRAW_WAYPOINTS = false;
 const ROOM_TITLE_OUTLINE_WIDTH_RATIO = 0.15;
 
 type RoomDrawableContent =
-  | { kind:'character', depth:number, x:number, sortId:string, character:Character }
-  | { kind:'item', depth:number, x:number, sortId:string, item:Item };
+  | { kind:'character', y:number, x:number, sortId:string, character:Character }
+  | { kind:'item', y:number, x:number, sortId:string, item:Item };
 
 function _drawWaypointCrosshairs(room:Room, scalingFactors:ScalingFactors, context:CanvasRenderingContext2D) {
   const crosshairSize = Math.max(2, Math.round(scalingFactors.roomLineWidth * 1.5));
@@ -69,7 +70,7 @@ export function drawRoomExit(room:Room, exit:RoomExit, characters:Character[], s
 }
 
 export function drawRoomShell(room:Room, isActive:boolean,
-  scalingFactors:ScalingFactors, context:CanvasRenderingContext2D, showFullContents:boolean = false) {
+  scalingFactors:ScalingFactors, context:CanvasRenderingContext2D, imageSet:ImageSet, showFullContents:boolean = false) {
   if (!room.isDiscovered) return;
   const isRoomObscured = room.isObscured && !showFullContents;
   const scaledTopLeft = gameToCanvasPosition(room.rect.x, room.rect.y, scalingFactors);
@@ -79,10 +80,11 @@ export function drawRoomShell(room:Room, isActive:boolean,
   context.lineWidth = scalingFactors.roomLineWidth;
   context.fillStyle = isRoomObscured ? COLOR_BLACK : (showFullContents || isActive ? COLOR_ACTIVE_ROOM_FILL : COLOR_INACTIVE_ROOM_FILL);
   context.fillRect(scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
+  if (!isRoomObscured && (showFullContents || isActive)) {
+    drawRoomSideView(room, scalingFactors, context, imageSet, deriveRoomComposition(room.title, room.decorHint ?? null));
+  }
   context.strokeStyle = COLOR_DARK_GRAY;
   context.strokeRect(scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
-  drawFloorPanel(room, scalingFactors, context);
-  drawRightWallPanel(room, scalingFactors, context);
   drawRoomStairs(room, scalingFactors, context);
   context.textAlign = "center";
   context.textBaseline = "middle";
@@ -101,11 +103,11 @@ export function drawRoomShell(room:Room, isActive:boolean,
 
 function _createDrawableContents(room:Room, charactersInRoom:Character[], effects:Effect[], includeUndiscoveredItems:boolean):RoomDrawableContent[] {
   return [
-    ...charactersInRoom.map(character => ({ kind:'character' as const, depth:character.depth, x:character.x, sortId:character.id, character })),
+    ...charactersInRoom.map(character => ({ kind:'character' as const, y:character.y, x:character.x, sortId:character.id, character })),
     ...findVisibleRoomItemsInDrawOrder(room, effects, includeUndiscoveredItems)
-      .map(item => ({ kind:'item' as const, depth:item.depth, x:item.position.x, sortId:item.id, item }))
+      .map(item => ({ kind:'item' as const, y:item.position.y, x:item.position.x, sortId:item.id, item }))
   ].sort((content1, content2) =>
-    content1.depth - content2.depth || content2.x - content1.x || content1.sortId.localeCompare(content2.sortId));
+    content1.y - content2.y || content2.x - content1.x || content1.sortId.localeCompare(content2.sortId));
 }
 
 function _drawRoomContents(room:Room, charactersInRoom:Character[], activeCharacter:Character|null, effects:Effect[],

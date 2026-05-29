@@ -1,7 +1,7 @@
 // Follow test conventions from CONTRIBUTING.md when editing this file.
 import { describe, expect, it } from 'vitest';
 
-import { calcRoomsBoundingRect, COLUMNS_PER_MAP_TILE, findCharactersInRoom, findExitWaypoint, findNearestWaypoint, findRoom, findRoomAtPosition, findRoomAtPositionOrTouchingBoundary, findRoomNearestToPosition, FLOOR_WAYPOINT_Y_OFFSET, generateWaypoints, roomWidthToColumnCount } from '../roomUtil';
+import { calcRoomsBoundingRect, COLUMNS_PER_MAP_TILE, findCharactersInRoom, findExitWaypoint, findNearestWaypoint, findRoom, findRoomAtPosition, findRoomAtPositionOrTouchingBoundary, findRoomNearestToPosition, FLOOR_BAND_HEIGHT_RATIO, FLOOR_WAYPOINT_Y_OFFSET, generateWaypoints, GRID_DEPTH_ROWS, roomWidthToColumnCount } from '../roomUtil';
 import { generateStairFlights } from '../stairFlightUtil';
 import Character from '../types/Character';
 import Rect from '../types/Rect';
@@ -282,15 +282,14 @@ describe('roomUtil', () => {
   });
 
   describe('generateWaypoints()', () => {
-    it('creates column-based floor waypoints for a simple room with no exits', () => {
+    it('creates a column x depth grid of floor waypoints for a simple room with no exits', () => {
       const waypoints = generateWaypoints(ROOM_ID, ROOM_RECT, []);
+      const columnCount = roomWidthToColumnCount(ROOM_RECT.width);
 
-      expect(waypoints.map(waypoint => waypoint.position)).toEqual([
-        { x:2.5, y:20 - FLOOR_WAYPOINT_Y_OFFSET },
-        { x:7.5, y:20 - FLOOR_WAYPOINT_Y_OFFSET },
-        { x:12.5, y:20 - FLOOR_WAYPOINT_Y_OFFSET },
-        { x:17.5, y:20 - FLOOR_WAYPOINT_Y_OFFSET }
-      ]);
+      expect(waypoints).toHaveLength(columnCount * GRID_DEPTH_ROWS);
+      expect(_findWaypoint(waypoints, 2.5, 20 - FLOOR_WAYPOINT_Y_OFFSET)).toBeDefined();
+      expect(_findWaypoint(waypoints, 17.5, 20 - FLOOR_WAYPOINT_Y_OFFSET)).toBeDefined();
+      _assertAllWaypointsHaveNeighbors(waypoints);
       _assertAllWaypointsAreInsideRoomRect(waypoints, ROOM_RECT);
     });
 
@@ -352,18 +351,18 @@ describe('roomUtil', () => {
       ]));
     });
 
-    it('omits spine waypoints when all exits are on the floor', () => {
+    it('omits a centered vertical spine when all exits are on the floor, keeping waypoints in the floor band', () => {
       const exits = [
         _createExit('West', 0, ROOM_RECT.y + ROOM_RECT.height - FLOOR_WAYPOINT_Y_OFFSET),
         _createExit('East', 20, ROOM_RECT.y + ROOM_RECT.height - FLOOR_WAYPOINT_Y_OFFSET)
       ];
 
       const waypoints = generateWaypoints(ROOM_ID, ROOM_RECT, exits);
+      const floorBackGameY = ROOM_RECT.y + ROOM_RECT.height * (1 - FLOOR_BAND_HEIGHT_RATIO);
 
-      expect(_findWaypoint(waypoints, 7.5, 6)).toBeUndefined();
       expect(_findWaypoint(waypoints, 0, 20 - FLOOR_WAYPOINT_Y_OFFSET)).toBeDefined();
       expect(_findWaypoint(waypoints, 20, 20 - FLOOR_WAYPOINT_Y_OFFSET)).toBeDefined();
-      expect(waypoints.every(waypoint => waypoint.position.y === 20 - FLOOR_WAYPOINT_Y_OFFSET)).toBe(true);
+      expect(waypoints.every(waypoint => waypoint.position.y >= floorBackGameY - 1e-6)).toBe(true);
     });
 
     it('creates exit routes for rooms whose exits are reachable by stair and landing waypoints', () => {

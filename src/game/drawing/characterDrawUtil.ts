@@ -2,7 +2,7 @@
 
 import { clamp } from "@/common/numberUtil";
 import { gameToCanvasPosition } from "./drawUtil";
-import { calcPanelOffset } from "./roomPanelDrawUtil";
+import { GRID_TILE_SIZE } from "../roomUtil";
 import Character from "../types/Character";
 import Room from "../types/Room";
 import ScalingFactors from "../types/ScalingFactors";
@@ -14,14 +14,15 @@ const PULSE_CADENCE_MS = 1000;
 const PULSE_SCALE_PEAK = 1.2;
 const CHARACTER_SWAY_INTERVAL = 1500;
 const CHARACTER_SWAY_AMOUNT = 1;
-const CHARACTER_WIDTH_SCALE = 3.75;
-const CHARACTER_HEIGHT_SCALE = 7.5;
+// Character size relative to one floor grid tile: one tile tall, with a proportionally narrow (tile/φ)
+// width, so the figure stands within its cell and scales with the grid rather than the zoom.
+const GOLDEN_RATIO = 1.618;
+const CHARACTER_HEIGHT_GAME = GRID_TILE_SIZE;
+const CHARACTER_WIDTH_GAME = GRID_TILE_SIZE / GOLDEN_RATIO;
 
 function _getCharacterCanvasBottomPosition(character:Character, scalingFactors:ScalingFactors):[number, number] {
-  const [baseX, baseY] = gameToCanvasPosition(character.x, character.y, scalingFactors);
-  const [offsetX, offsetY] = calcPanelOffset(scalingFactors);
-  const depth = clamp(character.depth, 0, 1);
-  return [baseX + offsetX * depth, baseY + offsetY * depth];
+  // character.y already encodes the floor grid cell (or stair height), so no depth remap is needed.
+  return gameToCanvasPosition(character.x, character.y, scalingFactors);
 }
 
 function _getCharacterDisplayName(character:Character):string {
@@ -154,10 +155,9 @@ export function drawSpeechBubble(speech:string, anchorX:number, anchorTopY:numbe
 }
 
 export function getCharacterSpeechAnchor(character:Character, scalingFactors:ScalingFactors, time:number) {
-  const { roomLineWidth } = scalingFactors;
   const [centerX, bottomY] = _getCharacterCanvasBottomPosition(character, scalingFactors);
-  const characterWidth = roomLineWidth * CHARACTER_WIDTH_SCALE;
-  const characterHeight = roomLineWidth * CHARACTER_HEIGHT_SCALE;
+  const characterWidth = CHARACTER_WIDTH_GAME * scalingFactors.scaleX;
+  const characterHeight = CHARACTER_HEIGHT_GAME * scalingFactors.scaleY;
   const centerY = Math.round(bottomY - characterHeight / 2);
   const swayPhase = ((time + character.randomSalt * CHARACTER_SWAY_INTERVAL) % CHARACTER_SWAY_INTERVAL) / CHARACTER_SWAY_INTERVAL;
   const sway = Math.sin(swayPhase * 2 * Math.PI) * CHARACTER_SWAY_AMOUNT;
@@ -182,8 +182,8 @@ export function drawObscuredActiveCharacter(room:Room, scalingFactors:ScalingFac
   const [roomLeft] = gameToCanvasPosition(room.rect.x, room.rect.y, scalingFactors);
   const [roomRight, roomBottom] = gameToCanvasPosition(room.rect.x + room.rect.width, room.rect.y + room.rect.height, scalingFactors);
   const centerX = roomLeft + (roomRight - roomLeft) / 2;
-  const characterWidth = scalingFactors.roomLineWidth * CHARACTER_WIDTH_SCALE;
-  const characterHeight = scalingFactors.roomLineWidth * CHARACTER_HEIGHT_SCALE;
+  const characterWidth = CHARACTER_WIDTH_GAME * scalingFactors.scaleX;
+  const characterHeight = CHARACTER_HEIGHT_GAME * scalingFactors.scaleY;
   const headRadius = Math.min(characterWidth, characterHeight) / 4;
   const bottomY = roomBottom - scalingFactors.roomLineWidth;
   const centerY = bottomY - characterHeight / 2;

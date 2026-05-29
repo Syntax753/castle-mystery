@@ -14,8 +14,11 @@ import { parseFirstFencedCodeBlockLines, parseOptions, parseSections, parseUniqu
 import { createNormalizedEntryMap, normalizeId } from "../game/idUtil";
 import { tryResolveItemId } from "./levelRoomPopulationLoader";
 import { areRoomsWellOrdered, sortRoomsForDrawingOrder } from "./roomOrderingUtil";
+import { parseRoomDecorHint } from "../game/roomCompositionUtil";
 
 export const MAP_TILE_SIZE = 20;
+
+export const RESERVED_ROOM_METADATA_KEYS:ReadonlySet<string> = new Set(['exits', 'obscured', 'wall', 'floor', 'furniture']);
 
 export type LegendTile = {
   entryId:string,
@@ -212,7 +215,8 @@ export function applyRoomMetadataFromSections(level:Level, roomsSection:string) 
     level.rooms[index] = {
       ...room,
       title: roomNameValues.title || roomSectionEntry.authoredName.trim(),
-      isObscured: (roomNameValues.obscured || '').toLowerCase() === 'true'
+      isObscured: (roomNameValues.obscured || '').toLowerCase() === 'true',
+      decorHint: parseRoomDecorHint({ wall:roomNameValues.wall, floor:roomNameValues.floor, furniture:roomNameValues.furniture })
     };
   });
 }
@@ -228,7 +232,7 @@ export function validateRoomGridLegendEntries(level:Level, roomsSection:string, 
 
     const roomNameValues = _parseNameValueLinesOrThrowDuplicate(roomSection, `room ${roomId}`);
     const roomLegend = Object.fromEntries(
-      Object.entries(roomNameValues).filter(([name]) => name !== 'exits' && name !== 'obscured')
+      Object.entries(roomNameValues).filter(([name]) => !RESERVED_ROOM_METADATA_KEYS.has(name))
     );
 
     findLegendTilesInGrid(gridLines, roomLegend).forEach(({ entryId:entryText, row, col }) => {

@@ -3,6 +3,7 @@ import Item, { duplicateItem } from "./Item"
 import RoomExit, { duplicateRoomExit } from "./RoomExit"
 import StairFlight, { duplicateStairFlight } from "./StairFlight"
 import Waypoint, { duplicateWaypoint } from "./Waypoint"
+import { RoomDecorHint } from "../roomCompositionUtil"
 
 type Room = {
   readonly id:string,
@@ -13,7 +14,8 @@ type Room = {
   readonly exits:RoomExit[],
   readonly stairs:StairFlight[],
   readonly waypoints:Waypoint[],
-  isDiscovered:boolean
+  isDiscovered:boolean,
+  readonly decorHint?:RoomDecorHint|null
 }
 
 export function duplicateRoom(from:Room):Room {
@@ -26,7 +28,8 @@ export function duplicateRoom(from:Room):Room {
     exits:from.exits.map(duplicateRoomExit),
     stairs:from.stairs.map(duplicateStairFlight),
     waypoints:from.waypoints.map(duplicateWaypoint),
-    isDiscovered:from.isDiscovered
+    isDiscovered:from.isDiscovered,
+    decorHint:from.decorHint
   }
 }
 

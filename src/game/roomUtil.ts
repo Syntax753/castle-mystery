@@ -1,5 +1,6 @@
 import { assert, assertNonNullable } from "decent-portal";
 
+import { clamp } from "@/common/numberUtil";
 import Rect from "./types/Rect";
 import Room from "./types/Room";
 import Character from "./types/Character";
@@ -14,9 +15,23 @@ import { MAP_TILE_SIZE } from "../levelLoading/levelRoomLayoutLoader";
 
 export const COLUMNS_PER_MAP_TILE = 4;
 export const FLOOR_WAYPOINT_Y_OFFSET = 0.001;
+// The floor occupies the bottom FLOOR_BAND_HEIGHT_RATIO of a room (in game-y), rendered as the floor
+// band. It is a GRID_DEPTH_ROWS-deep navigable grid: back rows (smaller y) are against the far wall,
+// the front row (largest y = floorY) is the near edge where exits/stairs attach.
+export const FLOOR_BAND_HEIGHT_RATIO = 2 / 3;
+export const GRID_DEPTH_ROWS = 10;
+// Side length (game units) of one floor grid cell / column — the fundamental tile of the room grid.
+export const GRID_TILE_SIZE = MAP_TILE_SIZE / COLUMNS_PER_MAP_TILE;
 
 export function roomWidthToColumnCount(roomWidth: number): number {
   return Math.round(roomWidth / MAP_TILE_SIZE) * COLUMNS_PER_MAP_TILE;
+}
+
+// Game-y of a floor grid cell for a depth fraction (0 = back/against wall, 1 = front/near edge).
+export function calcFloorBandGameY(roomRect:Rect, depthFraction:number):number {
+  const floorY = roomRect.y + roomRect.height - FLOOR_WAYPOINT_Y_OFFSET;
+  const floorBackGameY = roomRect.y + roomRect.height * (1 - FLOOR_BAND_HEIGHT_RATIO);
+  return floorBackGameY + clamp(depthFraction, 0, 1) * (floorY - floorBackGameY);
 }
 
 function _findAdjacentRoomId(roomId:string, exit:RoomExit):string {
@@ -242,19 +257,30 @@ export function generateWaypoints(roomId:string, roomRect:Rect, exits:RoomExit[]
 
   const columnCount = roomWidthToColumnCount(roomRect.width);
   const columnWidth = roomRect.width / columnCount;
+  const _columnX = (columnIndex:number) => roomRect.x + (columnIndex + 0.5) * columnWidth;
   const floorWaypoints:Waypoint[] = [];
+  for (let i = 0; i < columnCount; i++) floorWaypoints.push(_getOrCreateWaypoint(_columnX(i), floorY));
 
-  for (let i = 0; i < columnCount; i++) {
-    const x = roomRect.x + (i + 0.5) * columnWidth;
-    floorWaypoints.push(_getOrCreateWaypoint(x, floorY));
+  // Build the floor as a 2D depth grid: GRID_DEPTH_ROWS rows from the back of the floor band down to
+  // the front row (floorWaypoints), 4-connected so characters traverse columns AND depth.
+  const floorBackGameY = roomRect.y + roomRect.height * (1 - FLOOR_BAND_HEIGHT_RATIO);
+  const gridRows:Waypoint[][] = [];
+  for (let row = 0; row < GRID_DEPTH_ROWS - 1; row++) {
+    const rowY = floorBackGameY + (row / (GRID_DEPTH_ROWS - 1)) * (floorY - floorBackGameY);
+    const rowWaypoints:Waypoint[] = [];
+    for (let i = 0; i < columnCount; i++) rowWaypoints.push(_getOrCreateWaypoint(_columnX(i), rowY));
+    gridRows.push(rowWaypoints);
+  }
+  gridRows.push(floorWaypoints);
+  gridRows.forEach(rowWaypoints => {
+    for (let i = 0; i < rowWaypoints.length - 1; i++) _connectWaypoints(rowWaypoints[i], rowWaypoints[i + 1]);
+  });
+  for (let row = 0; row < gridRows.length - 1; row++) {
+    for (let i = 0; i < columnCount; i++) _connectWaypoints(gridRows[row][i], gridRows[row + 1][i]);
   }
 
   exits.forEach(exit => _getOrCreateWaypoint(exit.x, exit.y));
-
   let waypoints = Array.from(waypointsByKey.values());
-  for (let i = 0; i < floorWaypoints.length - 1; i++) {
-    _connectWaypoints(floorWaypoints[i], floorWaypoints[i + 1]);
-  }
 
   floorExits.forEach(exit => {
     const exitWaypoint = _getOrCreateWaypoint(exit.x, exit.y);

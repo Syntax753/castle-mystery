@@ -160,6 +160,7 @@ describe('solution unlock integration', () => {
     expect(itemBeforeHover.isDiscovered).toBe(false);
     expect(itemBeforeHover.isExamined).toBe(false);
 
+    // The book stands on its depth-row floor cell; the hover targets where it is drawn.
     updateGameStateForMouseMove(gameState, { type:PlayerEventType.MOUSEMOVE, x:6, y:5 });
 
     const itemAfterHover = gameState.rooms[0].items[0];

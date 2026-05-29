@@ -4,8 +4,8 @@ import { assertNonNullable } from "decent-portal";
 
 import { parseFirstFencedCodeBlockLines, parseOptions, parseSections, parseUniqueNameValueLines } from "@/common/markdownUtil";
 import { rand } from "@/common/randUtil";
-import { calcScaledRoomGridPosition, findLegendTilesInGrid } from "./levelRoomLayoutLoader";
-import { findNearestWaypoint, findRoom, roomWidthToColumnCount } from "../game/roomUtil";
+import { calcScaledRoomGridPosition, findLegendTilesInGrid, RESERVED_ROOM_METADATA_KEYS } from "./levelRoomLayoutLoader";
+import { calcFloorBandGameY, findNearestWaypoint, findRoom, roomWidthToColumnCount } from "../game/roomUtil";
 import Character from "../game/types/Character";
 import Item from "../game/types/Item";
 import Level from "../game/types/Level";
@@ -218,12 +218,14 @@ function _addCharactersAndRoomItemsFromSections(level:Level, roomsSection:string
 		const gridHeight = gridLines.length;
 		const roomNameValues = parseUniqueNameValueLines(roomSection, `room ${roomId}`);
 		const roomLegend = Object.fromEntries(
-			Object.entries(roomNameValues).filter(([name]) => name !== 'exits' && name !== 'obscured')
+			Object.entries(roomNameValues).filter(([name]) => !RESERVED_ROOM_METADATA_KEYS.has(name))
 		);
 
 		findLegendTilesInGrid(gridLines, roomLegend).forEach(({ entryId:authoredEntryText, row, col }) => {
 			const entryId = normalizeId(authoredEntryText);
-			const [x, y] = calcScaledRoomGridPosition(room, row, col, gridWidth, gridHeight);
+			const [x] = calcScaledRoomGridPosition(room, row, col, gridWidth, gridHeight);
+			const depthFraction = gridHeight <= 1 ? 1 : row / (gridHeight - 1);
+			const y = calcFloorBandGameY(room.rect, depthFraction);
 			const characterDepth = _getCharacterDepthForGridRow(row);
 			const itemDepth = _getItemDepthForGridRow(row);
 			const characterDefinition = characterDefinitions.get(entryId);
