@@ -47,6 +47,7 @@ function _findUniqueSortedNumbers(values:number[]):number[] {
 }
 
 function _assertExitIsNotOnCeiling(roomId:string, roomRect:Rect, exit:RoomExit):void {
+  if (exit.isDepthExit) return;
   if (exit.x === roomRect.x || exit.x === roomRect.x + roomRect.width) return;
   assert(
     exit.y !== roomRect.y,
@@ -55,15 +56,33 @@ function _assertExitIsNotOnCeiling(roomId:string, roomRect:Rect, exit:RoomExit):
 }
 
 function _assertExitPositionIsSupported(roomId:string, roomRect:Rect, exit:RoomExit):void {
+  if (exit.isDepthExit) return;
   if (exit.x === roomRect.x || exit.x === roomRect.x + roomRect.width) return;
   if (exit.y === roomRect.y + roomRect.height - FLOOR_WAYPOINT_Y_OFFSET) return;
   throw new Error(`exit for room ${roomId} at (${exit.x}, ${exit.y}) is not on a supported boundary`);
 }
 
+// A back/front (depth) door lives on a horizontal wall but is walked to from the floor grid: a back-wall
+// door (room top) maps to the back row, a front door (room bottom) to the front row, snapped to a column.
+export function calcDepthExitNavPosition(roomRect:Rect, exit:RoomExit):{ x:number, y:number } {
+  const floorY = roomRect.y + roomRect.height - FLOOR_WAYPOINT_Y_OFFSET;
+  const floorBackGameY = roomRect.y + roomRect.height * (1 - FLOOR_BAND_HEIGHT_RATIO);
+  const isBackWall = Math.abs(exit.y - roomRect.y) <= Math.abs(exit.y - (roomRect.y + roomRect.height));
+  const columnCount = roomWidthToColumnCount(roomRect.width);
+  const columnWidth = roomRect.width / columnCount;
+  let navX = roomRect.x + 0.5 * columnWidth;
+  for (let i = 1; i < columnCount; i++) {
+    const candidateX = roomRect.x + (i + 0.5) * columnWidth;
+    if (Math.abs(candidateX - exit.x) < Math.abs(navX - exit.x)) navX = candidateX;
+  }
+  return { x:navX, y:isBackWall ? floorBackGameY : floorY };
+}
+
 export function findExitWaypoint(roomId:string, roomRect:Rect, exit:RoomExit, waypoints:Waypoint[]):Waypoint {
   _assertExitPositionIsSupported(roomId, roomRect, exit);
-  const waypoint = waypoints.find(candidate => candidate.position.x === exit.x && candidate.position.y === exit.y);
-  if (!waypoint) throw new Error(`missing exit waypoint for room ${roomId} at (${exit.x}, ${exit.y})`);
+  const target = exit.isDepthExit ? calcDepthExitNavPosition(roomRect, exit) : { x:exit.x, y:exit.y };
+  const waypoint = waypoints.find(candidate => candidate.position.x === target.x && candidate.position.y === target.y);
+  if (!waypoint) throw new Error(`missing exit waypoint for room ${roomId} at (${target.x}, ${target.y})`);
   return waypoint;
 }
 
@@ -252,8 +271,11 @@ export function generateWaypoints(roomId:string, roomRect:Rect, exits:RoomExit[]
 
   exits.forEach(exit => _assertExitIsNotOnCeiling(roomId, roomRect, exit));
   const floorY = roomRect.y + roomRect.height - FLOOR_WAYPOINT_Y_OFFSET;
-  const floorExits = exits.filter(exit => exit.y === floorY);
-  const nonFloorExits = exits.filter(exit => exit.y !== floorY);
+  // Depth (back/front) exits attach to the floor grid rows directly (see calcDepthExitNavPosition), so
+  // only side exits feed the floor/non-floor (stair/spine) wiring below.
+  const sideExits = exits.filter(exit => !exit.isDepthExit);
+  const floorExits = sideExits.filter(exit => exit.y === floorY);
+  const nonFloorExits = sideExits.filter(exit => exit.y !== floorY);
 
   const columnCount = roomWidthToColumnCount(roomRect.width);
   const columnWidth = roomRect.width / columnCount;
@@ -279,7 +301,7 @@ export function generateWaypoints(roomId:string, roomRect:Rect, exits:RoomExit[]
     for (let i = 0; i < columnCount; i++) _connectWaypoints(gridRows[row][i], gridRows[row + 1][i]);
   }
 
-  exits.forEach(exit => _getOrCreateWaypoint(exit.x, exit.y));
+  sideExits.forEach(exit => _getOrCreateWaypoint(exit.x, exit.y));
   let waypoints = Array.from(waypointsByKey.values());
 
   floorExits.forEach(exit => {

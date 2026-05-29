@@ -455,5 +455,27 @@ describe('roomUtil', () => {
 
       expect(() => generateWaypoints(ROOM_ID, ROOM_RECT, exits)).toThrow(/ceiling exits are not supported/i);
     });
+
+    it('attaches a back-wall depth exit to the back row of the floor grid', () => {
+      const exit:RoomExit = { id:createRoomExitId(ROOM_ID, 'North', 10, ROOM_RECT.y), room1Id:ROOM_ID, room2Id:'North',
+        x:10, y:ROOM_RECT.y, exitType:ExitType.doorway, lockableFromRoom1With:null, lockableFromRoom2With:null,
+        exitStatus:ExitStatus.open, isDepthExit:true };
+      const waypoints = generateWaypoints(ROOM_ID, ROOM_RECT, [exit]);
+      const exitWaypoint = findExitWaypoint(ROOM_ID, ROOM_RECT, exit, waypoints);
+
+      expect(exitWaypoint.position.y).toBeCloseTo(ROOM_RECT.y + ROOM_RECT.height * (1 - FLOOR_BAND_HEIGHT_RATIO));
+      expect(exitWaypoint.adjacentWaypoints.length).toBeGreaterThan(0);
+    });
+
+    it('attaches a front-wall depth exit to the front (floor) row', () => {
+      const exit:RoomExit = { id:createRoomExitId(ROOM_ID, 'South', 10, ROOM_RECT.y + ROOM_RECT.height), room1Id:ROOM_ID, room2Id:'South',
+        x:10, y:ROOM_RECT.y + ROOM_RECT.height, exitType:ExitType.doorway, lockableFromRoom1With:null, lockableFromRoom2With:null,
+        exitStatus:ExitStatus.open, isDepthExit:true };
+      const waypoints = generateWaypoints(ROOM_ID, ROOM_RECT, [exit]);
+      const exitWaypoint = findExitWaypoint(ROOM_ID, ROOM_RECT, exit, waypoints);
+
+      expect(exitWaypoint.position.y).toBeCloseTo(ROOM_RECT.y + ROOM_RECT.height - FLOOR_WAYPOINT_Y_OFFSET);
+      expect(exitWaypoint.adjacentWaypoints.length).toBeGreaterThan(0);
+    });
   });
 });

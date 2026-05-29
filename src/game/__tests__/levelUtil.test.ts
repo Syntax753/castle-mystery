@@ -47,7 +47,6 @@ import duplicateRoomLegendEntryText from './fixtures/duplicate-room-legend-entry
 import duplicateRoomSubsectionsCaseText from './fixtures/duplicate-room-subsections-case.md?raw';
 import doorsArrivalTimestampText from './fixtures/doors-arrival-timestamp.md?raw';
 import invalidLockableExitItemText from './fixtures/invalid-lockable-exit-item.md?raw';
-import invalidCeilingFloorExitText from './fixtures/invalid-ceiling-floor-exit.md?raw';
 import lockRequiredItemMissingText from './fixtures/lock-required-item-missing.md?raw';
 import unlockRequiredItemMissingText from './fixtures/unlock-required-item-missing.md?raw';
 import duplicateSolutionCategoryGroupNamesText from './fixtures/duplicate-solution-category-group-names.md?raw';
@@ -395,15 +394,35 @@ describe('levelUtil itinerary loading', () => {
     }
   });
 
-  it('wraps ceiling or floor exits with filename and line number', () => {
-    try {
-      loadLevelFromText(invalidCeilingFloorExitText, 'invalid-ceiling-floor-exit.md');
-      expect.fail('expected level loading to throw');
-    } catch (error) {
-      expect(error).toBeInstanceOf(LoadLevelException);
-      expect((error as LoadLevelException).message).toContain('invalid-ceiling-floor-exit.md:18');
-      expect((error as LoadLevelException).message).toContain('ceiling or floor exits are not supported');
-    }
+  it('connects vertically stacked rooms with a back/front (depth) door', () => {
+    const stackedRoomsText = [
+      '# general',
+      '* activeCharacter=Hero',
+      '# map',
+      '```',
+      'A',
+      'B',
+      '```',
+      '* A=Parlour',
+      '* B=Cellar',
+      '# rooms',
+      '## Parlour',
+      '```',
+      '....',
+      '.H..',
+      '....',
+      '```',
+      '* H=Hero',
+      '* exits=Cellar',
+      '## Cellar',
+      '# characters',
+      '## Hero',
+      '* description=A test guest.'
+    ].join('\n');
+
+    const level = loadLevelFromText(stackedRoomsText, 'stacked-rooms.md');
+    expect(level.rooms).toHaveLength(2);
+    expect(level.rooms.flatMap(room => room.exits).filter(exit => exit.isDepthExit).length).toBeGreaterThan(0);
   });
 
   it('throws when a room grid legend entry is not a known character or item', () => {

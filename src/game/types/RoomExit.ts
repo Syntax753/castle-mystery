@@ -12,7 +12,10 @@ type RoomExit = {
   readonly exitType:ExitType,
   readonly lockableFromRoom1With:string|null,
   readonly lockableFromRoom2With:string|null,
-  exitStatus:ExitStatus
+  exitStatus:ExitStatus,
+  // true for a back/front door on a horizontal shared wall (the map y-axis = depth); false/undefined for
+  // a left/right side door on a vertical wall.
+  readonly isDepthExit?:boolean
 }
 
 export function createRoomExitId(room1Id:string, room2Id:string, x:number, y:number):string {

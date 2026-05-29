@@ -6,6 +6,7 @@
 import { COLOR_BLACK } from "./drawConstants";
 import { CanvasBand, calcRoomSideViewBands, calcTileGrid, GRID_DEPTH_ROWS, RoomSideViewBands } from "./roomSideViewLayoutUtil";
 import { roomWidthToColumnCount } from "../roomUtil";
+import { gameToCanvasPosition } from "./drawUtil";
 import { RoomComposition, RoomFurniturePlacement } from "../roomCompositionUtil";
 import ImageSet from "../types/ImageSet";
 import Room from "../types/Room";
@@ -26,6 +27,13 @@ const DIVIDER_LINE_WIDTH_RATIO = 0.5;
 const GRID_LINE_COLOR = "rgba(20,16,10,0.22)";
 const GRID_LINE_WIDTH_RATIO = 0.25;
 const FURNITURE_BACK_SCALE = 0.72;
+const DEPTH_DOOR_PEEK_COLOR = "rgba(14,11,8,0.6)";
+const BACK_DOOR_HEIGHT_RATIO = 0.6;
+const BACK_DOOR_ASPECT = 0.52;
+const FRONT_DOOR_HEIGHT_RATIO = 0.72;
+const FRONT_DOOR_ASPECT = 0.95;
+const DEPTH_DOOR_OUTLINE_RATIO = 0.5;
+const DEPTH_DOOR_SHOULDER_RATIO = 0.32;
 
 function _drawTiledBand(band:CanvasBand, tileUrl:string, tilePx:number, imageSet:ImageSet, fallbackColor:string, context:CanvasRenderingContext2D) {
   context.save();
@@ -96,6 +104,44 @@ function _drawFloorGrid(room:Room, bands:RoomSideViewBands, scalingFactors:Scali
   context.restore();
 }
 
+function _traceDepthDoorArch(centerX:number, bottom:number, height:number, width:number, context:CanvasRenderingContext2D) {
+  const left = centerX - width / 2;
+  const right = centerX + width / 2;
+  const top = bottom - height;
+  const shoulderY = top + height * DEPTH_DOOR_SHOULDER_RATIO;
+  context.beginPath();
+  context.moveTo(left, bottom);
+  context.lineTo(left, shoulderY);
+  context.quadraticCurveTo(left, top, centerX, top);
+  context.quadraticCurveTo(right, top, right, shoulderY);
+  context.lineTo(right, bottom);
+  context.closePath();
+}
+
+// Phase 1: a flat arched opening with a dim peek (no parallax neighbour yet) — back doors sit in the far
+// wall, front doors at the near (floor) edge.
+function _drawDepthDoors(room:Room, bands:RoomSideViewBands, scalingFactors:ScalingFactors, context:CanvasRenderingContext2D) {
+  room.exits.forEach(exit => {
+    if (!exit.isDepthExit) return;
+    const [centerX] = gameToCanvasPosition(exit.x, room.rect.y, scalingFactors);
+    const isBackWall = Math.abs(exit.y - room.rect.y) <= Math.abs(exit.y - (room.rect.y + room.rect.height));
+    const height = isBackWall
+      ? bands.wallBand.height * BACK_DOOR_HEIGHT_RATIO
+      : bands.floorBand.height * FRONT_DOOR_HEIGHT_RATIO;
+    const width = height * (isBackWall ? BACK_DOOR_ASPECT : FRONT_DOOR_ASPECT);
+    const bottom = isBackWall ? bands.floorTopY : bands.roomBottom;
+    context.save();
+    context.fillStyle = DEPTH_DOOR_PEEK_COLOR;
+    _traceDepthDoorArch(centerX, bottom, height, width, context);
+    context.fill();
+    context.strokeStyle = COLOR_BLACK;
+    context.lineWidth = Math.max(1, scalingFactors.roomLineWidth * DEPTH_DOOR_OUTLINE_RATIO);
+    _traceDepthDoorArch(centerX, bottom, height, width, context);
+    context.stroke();
+    context.restore();
+  });
+}
+
 export function drawRoomSideView(room:Room, scalingFactors:ScalingFactors, context:CanvasRenderingContext2D,
   imageSet:ImageSet, composition:RoomComposition) {
   const bands = calcRoomSideViewBands(room, scalingFactors);
@@ -110,6 +156,7 @@ export function drawRoomSideView(room:Room, scalingFactors:ScalingFactors, conte
   context.moveTo(bands.roomLeft, bands.floorTopY);
   context.lineTo(bands.roomRight, bands.floorTopY);
   context.stroke();
+  _drawDepthDoors(room, bands, scalingFactors, context);
   [...composition.furniture]
     .sort((placement1, placement2) => placement1.depthFraction - placement2.depthFraction)
     .forEach(placement => _drawFurniturePlacement(bands, placement, imageSet, context));

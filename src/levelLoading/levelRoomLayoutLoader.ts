@@ -274,11 +274,6 @@ function _findExitPositionFromSharedWallSection(sharedWallSection:Rect):[x:numbe
   return [sharedWallSection.x, sharedWallSection.y + sharedWallSection.height];
 }
 
-function _throwIfSharedWallSectionIsHorizontal(sharedWallSection:Rect, pendingExit:PendingExit):void {
-  if (sharedWallSection.width === 0) return;
-  throw new Error(`ceiling or floor exits are not supported for ${pendingExit.room1Id}|${pendingExit.room2Id}`);
-}
-
 function _parseExitReference(exitText:string, itemDefinitions:Map<string, { title:string }>):ParsedExitReference {
   const trimmedExitText = exitText.trim();
   const openParenIndex = trimmedExitText.indexOf('(');
@@ -383,13 +378,20 @@ function _addExitBetweenRooms(level:Level, pendingExit:PendingExit) {
   const room2 = findRoom(level.rooms, room2Id);
   const sharedWallSection = _findSharedWallSectionBetweenRooms(room1, room2);
   assertNonNullable(sharedWallSection, 'rooms must be adjacent');
-  _throwIfSharedWallSectionIsHorizontal(sharedWallSection, pendingExit);
-  const [x, sharedY] = _findExitPositionFromSharedWallSection(sharedWallSection);
-  const room1FloorY = room1.rect.y + room1.rect.height;
-  const room2FloorY = room2.rect.y + room2.rect.height;
-  const y = sharedY === room1FloorY || sharedY === room2FloorY
-    ? sharedY - FLOOR_WAYPOINT_Y_OFFSET
-    : sharedY;
+  const isDepthExit = sharedWallSection.width > 0;
+  let x:number;
+  let y:number;
+  if (isDepthExit) {
+    // a horizontal shared wall is a back/front (depth) door, centered on the shared edge
+    x = sharedWallSection.x + sharedWallSection.width / 2;
+    y = sharedWallSection.y;
+  } else {
+    const [exitX, sharedY] = _findExitPositionFromSharedWallSection(sharedWallSection);
+    const room1FloorY = room1.rect.y + room1.rect.height;
+    const room2FloorY = room2.rect.y + room2.rect.height;
+    x = exitX;
+    y = sharedY === room1FloorY || sharedY === room2FloorY ? sharedY - FLOOR_WAYPOINT_Y_OFFSET : sharedY;
+  }
   const exitType = _determineExitType(pendingExit);
   const exit:RoomExit = {
     id:createRoomExitId(room1Id, room2Id, x, y),
@@ -404,7 +406,8 @@ function _addExitBetweenRooms(level:Level, pendingExit:PendingExit) {
     lockableFromRoom2With: exitType === ExitType.lockableDoor
       ? pendingExit.room2LockableWith ?? (_hasAnyModifier(pendingExit.room2Modifiers, ['lockable', 'unlockable']) ? LOCKABLE_WITHOUT_INV_CHECK : null)
       : null,
-    exitStatus: _determineExitStatus(pendingExit, exitType)
+    exitStatus: _determineExitStatus(pendingExit, exitType),
+    isDepthExit
   };
   room1.exits.push(exit);
   room2.exits.push(exit);
