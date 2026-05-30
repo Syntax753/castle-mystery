@@ -8,9 +8,10 @@
 # map
 
 ```
-BSD
-RHK
-JTC
+BHS
+RHD
+KHT
+J.C
 ```
 
 * J=Jetty
@@ -35,13 +36,13 @@ JTC
 
 * l=William Blore
 * m=Anthony Marston
-* exits=Drawing Room
+* exits=Kitchen
 * floor=wood
 * furniture=barrel | chest | torch
 
 ## Hall
 
-* exits=Drawing Room | Kitchen | Study | Terrace
+* exits=Bedrooms | Study | Drawing Room | Dining Room | Kitchen | Terrace
 * furniture=banner | shield | tapestry | torch
 
 ## Drawing Room
@@ -57,7 +58,6 @@ JTC
 * g=Gramophone Record
 * v=Vera Claythorne
 * p=Philip Lombard
-* exits=Bedrooms
 * floor=wood
 * furniture=fireplace | bookshelf | chair | window | tapestry
 
@@ -70,7 +70,6 @@ JTC
 ```
 
 * f=Soldier Figurines
-* exits=Kitchen
 * floor=wood
 * furniture=table | chair | candelabra | tapestry
 
@@ -96,7 +95,6 @@ JTC
 ```
 
 * w=Justice Wargrave
-* exits=Dining Room
 * floor=wood
 * furniture=bookshelf | table | chair | candelabra | window
 
@@ -110,7 +108,6 @@ JTC
 
 * h=Hypodermic Syringe
 * y=Cyanide
-* exits=Study
 * floor=wood
 * furniture=bed | wardrobe | chest | window
 

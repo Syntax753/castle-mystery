@@ -27,13 +27,15 @@ const DIVIDER_LINE_WIDTH_RATIO = 0.5;
 const GRID_LINE_COLOR = "rgba(20,16,10,0.22)";
 const GRID_LINE_WIDTH_RATIO = 0.25;
 const FURNITURE_BACK_SCALE = 0.72;
-const DEPTH_DOOR_PEEK_COLOR = "rgba(14,11,8,0.6)";
-const BACK_DOOR_HEIGHT_RATIO = 0.6;
-const BACK_DOOR_ASPECT = 0.52;
+const DEPTH_DOOR_DARK = "rgba(12,10,8,0.94)";
+const DEPTH_DOOR_RECESS_TOP_SHADE = "rgba(0,0,0,0.55)";
+const DEPTH_DOOR_RECESS_BOTTOM_SHADE = "rgba(0,0,0,0.1)";
+const BACK_DOOR_HEIGHT_RATIO = 0.98;
+const BACK_DOOR_WIDTH_FRAC = 0.6;
 const FRONT_DOOR_HEIGHT_RATIO = 0.72;
 const FRONT_DOOR_ASPECT = 0.95;
 const DEPTH_DOOR_OUTLINE_RATIO = 0.5;
-const DEPTH_DOOR_SHOULDER_RATIO = 0.32;
+const DEPTH_DOOR_SHOULDER_RATIO = 0.3;
 
 function _drawTiledBand(band:CanvasBand, tileUrl:string, tilePx:number, imageSet:ImageSet, fallbackColor:string, context:CanvasRenderingContext2D) {
   context.save();
@@ -118,8 +120,8 @@ function _traceDepthDoorArch(centerX:number, bottom:number, height:number, width
   context.closePath();
 }
 
-// Phase 1: a flat arched opening with a dim peek (no parallax neighbour yet) — back doors sit in the far
-// wall, front doors at the near (floor) edge.
+// A depth exit goes INTO the screen, so it is just a dark recessed opening in the wall — never a window
+// into the neighbouring room (no foreign floor, no other room rendered in depth).
 function _drawDepthDoors(room:Room, bands:RoomSideViewBands, scalingFactors:ScalingFactors, context:CanvasRenderingContext2D) {
   room.exits.forEach(exit => {
     if (!exit.isDepthExit) return;
@@ -128,17 +130,26 @@ function _drawDepthDoors(room:Room, bands:RoomSideViewBands, scalingFactors:Scal
     const height = isBackWall
       ? bands.wallBand.height * BACK_DOOR_HEIGHT_RATIO
       : bands.floorBand.height * FRONT_DOOR_HEIGHT_RATIO;
-    const width = height * (isBackWall ? BACK_DOOR_ASPECT : FRONT_DOOR_ASPECT);
+    const width = isBackWall
+      ? (bands.roomRight - bands.roomLeft) * BACK_DOOR_WIDTH_FRAC
+      : height * FRONT_DOOR_ASPECT;
     const bottom = isBackWall ? bands.floorTopY : bands.roomBottom;
+    const top = bottom - height;
     context.save();
-    context.fillStyle = DEPTH_DOOR_PEEK_COLOR;
     _traceDepthDoorArch(centerX, bottom, height, width, context);
-    context.fill();
+    context.clip();
+    context.fillStyle = DEPTH_DOOR_DARK;
+    context.fillRect(centerX - width / 2, top, width, height);
+    const recess = context.createLinearGradient(0, top, 0, bottom);
+    recess.addColorStop(0, DEPTH_DOOR_RECESS_TOP_SHADE);
+    recess.addColorStop(1, DEPTH_DOOR_RECESS_BOTTOM_SHADE);
+    context.fillStyle = recess;
+    context.fillRect(centerX - width / 2, top, width, height);
+    context.restore();
     context.strokeStyle = COLOR_BLACK;
     context.lineWidth = Math.max(1, scalingFactors.roomLineWidth * DEPTH_DOOR_OUTLINE_RATIO);
     _traceDepthDoorArch(centerX, bottom, height, width, context);
     context.stroke();
-    context.restore();
   });
 }
 

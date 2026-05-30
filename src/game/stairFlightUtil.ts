@@ -22,8 +22,10 @@ function _calcFloorY(room:Room):number {
 }
 
 function _findSortedNonFloorExits(room:Room, floorY:number):RoomExit[] {
+  // Depth (back/front) doors sit on horizontal walls (a back door's y is the room top); they are NOT
+  // upper-level exits and must not generate stairs.
   return [...room.exits]
-    .filter(exit => exit.y < floorY)
+    .filter(exit => !exit.isDepthExit && exit.y < floorY)
     .sort((left, right) => left.y - right.y || left.x - right.x);
 }
 

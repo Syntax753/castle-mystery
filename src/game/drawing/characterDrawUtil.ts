@@ -14,11 +14,11 @@ const PULSE_CADENCE_MS = 1000;
 const PULSE_SCALE_PEAK = 1.2;
 const CHARACTER_SWAY_INTERVAL = 1500;
 const CHARACTER_SWAY_AMOUNT = 1;
-// Character size relative to one floor grid tile: one tile tall, with a proportionally narrow (tile/φ)
-// width, so the figure stands within its cell and scales with the grid rather than the zoom.
+// Character size relative to one floor grid tile: one tile tall, with a narrow (half of tile/φ) width,
+// so the figure stands within its cell and scales with the grid rather than the zoom.
 const GOLDEN_RATIO = 1.618;
 const CHARACTER_HEIGHT_GAME = GRID_TILE_SIZE;
-const CHARACTER_WIDTH_GAME = GRID_TILE_SIZE / GOLDEN_RATIO;
+const CHARACTER_WIDTH_GAME = GRID_TILE_SIZE / GOLDEN_RATIO / 2;
 
 function _getCharacterCanvasBottomPosition(character:Character, scalingFactors:ScalingFactors):[number, number] {
   // character.y already encodes the floor grid cell (or stair height), so no depth remap is needed.

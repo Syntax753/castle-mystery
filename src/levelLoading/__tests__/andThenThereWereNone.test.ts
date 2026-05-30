@@ -9,6 +9,9 @@ describe('and-then-there-were-none level', () => {
     const level = loadLevelFromText(levelText, 'and-then-there-were-none.md', { validateUnlockPhrases:true });
     expect(level.rooms).toHaveLength(9);
     expect(level.characters).toHaveLength(10);
+    // the three-storey Hall climbs between floors; a depth-door room must NOT get spurious stairs
+    expect(level.rooms.find(room => room.title === 'Hall')?.stairs.length).toBeGreaterThan(0);
+    expect(level.rooms.find(room => room.title === 'Drawing Room')?.stairs.length).toBe(0);
     expect(level.characters.map(character => character.title)).toEqual(
       expect.arrayContaining(['Justice Wargrave', 'Vera Claythorne', 'Philip Lombard', 'Thomas Rogers', 'Ethel Rogers'])
     );
