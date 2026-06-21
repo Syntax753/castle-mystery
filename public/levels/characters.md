@@ -26,8 +26,8 @@ ethnicityBackground=Greek Sicilian
 
 ## Anna
 
-* title=Anna di Giorgio Greco
-* description=This young woman keeps her mind on her duties.
+* title=Anna di Pietro
+* description=This young woman keeps her mind on her duties. Sort of.
 * faceImage=anna.png
 
 age=22
@@ -87,7 +87,7 @@ ethnicityBackground=Greek Sicilian
 ## Heinrich
 
 * title=Heinrich Sohn des Konrad
-* description=An 11-year-old boy, peering calmly.
+* description=An 11-year-old boy.
 * faceImage=heinrich.png
 
 ## Male Peasant
@@ -121,6 +121,10 @@ ethnicityBackground=Latin Sicilian
 * title=Niccolò il Calabrese
 * description=This man holds dark thoughts.
 * faceImage=niccolo.png
+
+age=38
+occupation=Stone cutter
+ethnicityBackground=Calabrian Italian
 
 ## Old Female Peasant
 
@@ -194,3 +198,5 @@ ethnicityBackground=Dalmatian
 * title=Yusuf ibn Khalaf al-Balarmi
 * description=A man of slight build, in his early 40s.
 * faceImage=yusuf.png
+occupation=Builder and surveyor
+ethnicityBackground=Sicilian Muslim
