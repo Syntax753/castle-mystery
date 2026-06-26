@@ -6,10 +6,11 @@ import { assert, assertNonNullable } from "decent-portal";
 import { MarkdownLineError, parseFirstFencedCodeBlockLines, parseOptions, parseSectionEntriesWithLines, parseUniqueNameValueLines } from "@/common/markdownUtil";
 import { rand } from "@/common/randUtil";
 import { calcItemCuboidHeightGame } from "@/game/itemSizeUtil";
+import { roomWidthToColumnCount } from "@/game/roomGridUtil";
 import { ROOM_BACK_ROW_CENTER_Z, ROOM_FRONT_ROW_CENTER_Z, ROOM_MIDDLE_ROW_CENTER_Z } from "@/game/roomSpaceConstants";
 import { calcScaledRoomGridPosition, findLegendTilesInGrid } from "./levelRoomLayoutLoader";
 import { findRoom } from "../game/roomUtil";
-import { findNearestWaypointToPosition, FLOOR_WAYPOINT_Y_OFFSET, roomWidthToColumnCount } from "../game/waypointUtil";
+import { findNearestWaypointToPosition, FLOOR_WAYPOINT_Y_OFFSET } from "../game/waypointUtil";
 import Character, { type BodyOrientation, type FacingDirection } from "../game/types/Character";
 import Item from "../game/types/Item";
 import Level from "../game/types/Level";
@@ -23,6 +24,7 @@ type CharacterDefinition = {
 	description:string,
 	inventoryItems:Array<{ id:string, title:string }>,
 	faceImageUrl:string|null,
+	isVisible:boolean,
 	isAlive:boolean,
 	facingDirection:FacingDirection,
 	bodyOrientation:BodyOrientation,
@@ -32,9 +34,10 @@ type CharacterDefinition = {
 type ItemDefinition = {
 	title:string,
 	description:string,
-	displayChar:string,
 	imageUrl:string|null,
-	drawOffset:Position
+	isVisible:boolean,
+	drawOffset:Position,
+	stackOffset:Position
 };
 
 export type RoomPopulationDefinitions = {
@@ -67,6 +70,22 @@ function _parseOptionalIsAliveOrThrow(value:string|undefined, characterId:string
 	if (normalizedValue === 'true') return true;
 	if (normalizedValue === 'false') return false;
 	throw new Error(`character ${characterId} alive must be true or false`);
+}
+
+function _parseOptionalIsCharacterVisibleOrThrow(value:string|undefined, characterId:string):boolean {
+	if (value === undefined) return true;
+	const normalizedValue = value.trim().toLowerCase();
+	if (normalizedValue === 'true') return true;
+	if (normalizedValue === 'false') return false;
+	throw new Error(`character ${characterId} visible must be true or false`);
+}
+
+function _parseOptionalIsItemVisibleOrThrow(value:string|undefined, itemId:string):boolean {
+	if (value === undefined) return true;
+	const normalizedValue = value.trim().toLowerCase();
+	if (normalizedValue === 'true') return true;
+	if (normalizedValue === 'false') return false;
+	throw new Error(`item ${itemId} visible must be true or false`);
 }
 
 function _parseOptionalFacingDirectionOrThrow(value:string|undefined, characterId:string):FacingDirection {
@@ -123,6 +142,7 @@ export function parseCharacterDefinitions(charactersSection:string, firstLineNo:
 			description:nameValues.description || "",
 			inventoryItems,
 			faceImageUrl:nameValues.faceImage ? getFaceImageAssetUrl(nameValues.faceImage.trim()) : null,
+			isVisible:_parseOptionalIsCharacterVisibleOrThrow(nameValues.visible, characterId),
 			isAlive:_parseOptionalIsAliveOrThrow(nameValues.alive, characterId),
 			facingDirection:_parseOptionalFacingDirectionOrThrow(nameValues.facing, characterId),
 			bodyOrientation:_parseOptionalBodyOrientationOrThrow(nameValues.orientation, characterId),
@@ -142,12 +162,17 @@ export function parseItemDefinitions(itemsSection:string, firstLineNo:number = 1
 		itemDefinitions.set(itemId, {
 			title:nameValues.title || authoredItemName.trim(),
 			description:nameValues.description || "",
-			displayChar:nameValues.displayChar || authoredItemName.charAt(0) || "?",
 			imageUrl:nameValues.image ? getItemImageAssetUrl(nameValues.image.trim()) : null,
+			isVisible:_parseOptionalIsItemVisibleOrThrow(nameValues.visible, itemId),
 			drawOffset:{
 				x:_parseOptionalNumberOrThrow(nameValues.drawOffsetX, 'drawOffsetX', itemId),
 				y:_parseOptionalNumberOrThrow(nameValues.drawOffsetY, 'drawOffsetY', itemId),
 				z:_parseOptionalNumberOrThrow(nameValues.drawOffsetZ, 'drawOffsetZ', itemId)
+			},
+			stackOffset:{
+				x:_parseOptionalNumberOrThrow(nameValues.stackOffsetX, 'stackOffsetX', itemId),
+				y:_parseOptionalNumberOrThrow(nameValues.stackOffsetY, 'stackOffsetY', itemId),
+				z:_parseOptionalNumberOrThrow(nameValues.stackOffsetZ, 'stackOffsetZ', itemId)
 			}
 		});
 	});
@@ -237,24 +262,35 @@ function _createRoomItemPosition(room:Room, targetX:number, depth:number, stackI
 	};
 }
 
+function _createRoomCharacterPosition(room:Room, targetX:number, depth:number) {
+	const floorY = _createCharacterFloorY(room);
+	const waypoint = findNearestWaypointToPosition(room, { x:targetX, y:floorY, z:depth });
+	return {
+		x:waypoint.position.x,
+		y:waypoint.position.y,
+		z:waypoint.position.z
+	};
+}
+
 function _createItemFromDefinition(itemId:string, defaultTitleText:string, itemDefinitions:Map<string, ItemDefinition>,
 	position:{x:number, y:number}, depth:number, isDiscovered:boolean):Item {
 	const itemDefinition = itemDefinitions.get(itemId);
 	return {
 		id:itemId,
 		title:itemDefinition?.title || defaultTitleText,
-		displayChar:itemDefinition?.displayChar || defaultTitleText.charAt(0) || "?",
 		imageUrl:itemDefinition?.imageUrl || null,
 		randomSalt:rand(),
+		isVisible:itemDefinition?.isVisible ?? true,
 		position:{ ...position, z:depth },
 		drawOffset:itemDefinition?.drawOffset || { x:0, y:0, z:0 },
+		stackOffset:itemDefinition?.stackOffset || { x:0, y:0, z:0 },
 		description:itemDefinition?.description || "",
 		isDiscovered
 	};
 }
 
 function _addCharacter(level:Level, room:Room, characterId:string, title:string, description:string,
-	faceImageUrl:string|null, isAlive:boolean, facingDirection:FacingDirection, bodyOrientation:BodyOrientation,
+	faceImageUrl:string|null, isVisible:boolean, isAlive:boolean, facingDirection:FacingDirection, bodyOrientation:BodyOrientation,
 	isTitleKnown:boolean, x:number, y:number, depth:number) {
 	const claimedWaypoints = new Set(level.characters.map(character => `${character.waypoint.position.x},${character.waypoint.position.y},${character.waypoint.position.z}`));
 	const waypoint = findNearestWaypointToPosition(room, { x, y, z:depth });
@@ -267,6 +303,8 @@ function _addCharacter(level:Level, room:Room, characterId:string, title:string,
 		title,
 		faceImageUrl,
 		randomSalt:rand(),
+		isDiscovered:false,
+		isVisible,
 		isAlive,
 		facingDirection,
 		bodyOrientation,
@@ -300,7 +338,6 @@ function _addLegendEntryPopulation(level:Level, room:Room, roomId:string, author
 	gridWidth:number, gridHeight:number, characterDefinitions:Map<string, CharacterDefinition>, itemDefinitions:Map<string, ItemDefinition>) {
 	const legendEntries = _parseRoomLegendPopulationEntries(authoredEntryText);
 	const [x] = calcScaledRoomGridPosition(room, row, col, gridWidth, gridHeight);
-	const characterY = _createCharacterFloorY(room);
 	const characterDepth = _getCharacterDepthForGridRow(row);
 	const itemDepth = _getItemDepthForGridRow(row);
 
@@ -308,10 +345,12 @@ function _addLegendEntryPopulation(level:Level, room:Room, roomId:string, author
 		const [{ entryId, entryText }] = legendEntries;
 		const characterDefinition = characterDefinitions.get(entryId);
 		if (characterDefinition) {
+			const characterPosition = _createRoomCharacterPosition(room, x, characterDepth);
 			_assertCharacterIdIsUnique(level, entryId, roomId, row, col);
 			_addCharacter(level, room, entryId, characterDefinition.title, characterDefinition.description,
-				characterDefinition.faceImageUrl, characterDefinition.isAlive, characterDefinition.facingDirection,
-				characterDefinition.bodyOrientation, characterDefinition.isTitleKnown, x, characterY, characterDepth);
+				characterDefinition.faceImageUrl, characterDefinition.isVisible, characterDefinition.isAlive, characterDefinition.facingDirection,
+				characterDefinition.bodyOrientation, characterDefinition.isTitleKnown,
+				characterPosition.x, characterPosition.y, characterPosition.z);
 			return;
 		}
 		if (itemDefinitions.has(entryId)) {
@@ -323,16 +362,34 @@ function _addLegendEntryPopulation(level:Level, room:Room, roomId:string, author
 		return;
 	}
 
-	legendEntries.forEach(({ entryId, entryText }, stackIndex) => {
-		if (characterDefinitions.has(entryId)) {
-			throw new Error(`room legend entry '${authoredEntryText}' at row ${row + 1}, col ${col + 1} in room ${roomId} may only stack items`);
-		}
+	const stackedCharacterEntries = legendEntries.filter(({ entryId }) => characterDefinitions.has(entryId));
+	if (stackedCharacterEntries.length > 1) {
+		throw new Error(`room legend entry '${authoredEntryText}' at row ${row + 1}, col ${col + 1} in room ${roomId} may include at most one character`);
+	}
+	const stackedCharacterEntry = stackedCharacterEntries[0] || null;
+	if (stackedCharacterEntry && legendEntries[legendEntries.length - 1].entryId !== stackedCharacterEntry.entryId) {
+		throw new Error(`room legend entry '${authoredEntryText}' at row ${row + 1}, col ${col + 1} in room ${roomId} must place any character last`);
+	}
+
+	const stackedItemEntries = stackedCharacterEntry ? legendEntries.slice(0, -1) : legendEntries;
+	stackedItemEntries.forEach(({ entryId, entryText }, stackIndex) => {
 		if (!itemDefinitions.has(entryId)) return;
 		_assertItemIdIsUnique(level, entryId, `at row ${row + 1}, col ${col + 1} in room ${roomId}`);
 		const itemPosition = _createRoomItemPosition(room, x, itemDepth, stackIndex);
 		_addItemToRoom(level, roomId, _createItemFromDefinition(entryId, entryText, itemDefinitions,
 			{ x:itemPosition.x, y:itemPosition.y }, itemPosition.z, false));
 	});
+
+	if (!stackedCharacterEntry) return;
+	const characterDefinition = characterDefinitions.get(stackedCharacterEntry.entryId);
+	assertNonNullable(characterDefinition);
+	const anchorItemPosition = _createRoomItemPosition(room, x, itemDepth, 0);
+	const characterPosition = _createRoomCharacterPosition(room, anchorItemPosition.x, characterDepth);
+	_assertCharacterIdIsUnique(level, stackedCharacterEntry.entryId, roomId, row, col);
+	_addCharacter(level, room, stackedCharacterEntry.entryId, characterDefinition.title, characterDefinition.description,
+		characterDefinition.faceImageUrl, characterDefinition.isVisible, characterDefinition.isAlive, characterDefinition.facingDirection,
+		characterDefinition.bodyOrientation, characterDefinition.isTitleKnown,
+		characterPosition.x, characterPosition.y, characterPosition.z);
 }
 
 function _addCharactersAndRoomItemsFromSections(level:Level, roomsSection:string,

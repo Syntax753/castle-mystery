@@ -1,9 +1,13 @@
 // Follow test conventions from CONTRIBUTING.md when editing this file.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { findCharacterPose } from '@/game/itineraryUtil';
+import { createBodyOrientationEvent, createFaceEvent, createWalkEvent } from '@/game/itineraryUtil';
 import baseLevelText from '@/game/__tests__/fixtures/timeline-start-time-field.md?raw';
+import { ROOM_MIDDLE_ROW_CENTER_Z } from '@/game/roomSpaceConstants';
 import { loadLevelFromText } from '@/levelLoading/levelUtil';
+import * as activityMovementUtil from '../activities/activity/activityMovementUtil';
+import { appendEventsToCharacterState, createCharacterActivityState, findStatePoseAtTime } from '../activities/activity/activityStateUtil';
 import { parseItineraryActivities } from '../itineraryLoading/itineraryActivityParseUtil';
 import { loadItineraries } from '../levelItineraryLoader';
 import itineraryTimelineSummaryText from './fixtures/itinerary-timeline-summary.md?raw';
@@ -49,6 +53,17 @@ describe('levelItineraryLoader', () => {
       expect(emitsActivity.subjectKind).toBe('item');
       expect(emitsActivity.subjectId).toBe('furia perched');
       expect(emitsActivity.activityText).toBe('emits "(squawk)"');
+    });
+
+    it('parses bare emits activities as implied-character activities', () => {
+      const options = { isCrossMidnight:false, explicitEndTime:null };
+      const [atActivity, emitsActivity] = parseItineraryActivities(['0:00:03 Niccollo @ Aviary', ': emits "(massive boom)"'].join('\n'), 'room-emits.md', 1, options, 0, 'hero');
+
+      expect(atActivity.subjectKind).toBe('character');
+      expect(emitsActivity.characterId).toBe('niccollo');
+      expect(emitsActivity.subjectKind).toBe('character');
+      expect(emitsActivity.subjectId).toBe('niccollo');
+      expect(emitsActivity.activityText).toBe('emits "(massive boom)"');
     });
 
     it('parses waits activities with explicit and default durations', () => {
@@ -107,8 +122,8 @@ describe('levelItineraryLoader', () => {
       const hero = result.characters.find(character => character.id === 'hero');
 
       expect(hero).toBeTruthy();
-      expect(findCharacterPose(hero!, 2_999).facingDirection).toBe('right');
-      expect(findCharacterPose(hero!, 3_000).facingDirection).toBe('left');
+      expect(findCharacterPose(hero!, 3_000).facingDirection).toBe('right');
+      expect(findCharacterPose(hero!, 3_001).facingDirection).toBe('left');
     });
 
     it('does not delay a later activity with an absolute timestamp', () => {
@@ -122,6 +137,42 @@ describe('levelItineraryLoader', () => {
       expect(hero).toBeTruthy();
       expect(findCharacterPose(hero!, 999).facingDirection).toBe('right');
       expect(findCharacterPose(hero!, 1_000).facingDirection).toBe('left');
+    });
+
+    it('reuses preview movement scheduling for absolute room-arrival activities', () => {
+      const level = loadLevelFromText(baseLevelText);
+      const planMovementToRoomSpy = vi.spyOn(activityMovementUtil, 'planMovementToRoom');
+
+      loadItineraries(level, '0:00:05 Hero @ 75%', 'preview-reuse.md', 1);
+
+      expect(planMovementToRoomSpy).toHaveBeenCalledTimes(1);
+      planMovementToRoomSpy.mockRestore();
+    });
+
+    it('reuses settled pose state for lookups at the current scheduling time', () => {
+      const level = loadLevelFromText(baseLevelText);
+      const room = level.rooms[0];
+      const waypoint = room.waypoints[0];
+      const character = level.characters.find(candidate => candidate.id === 'hero');
+
+      expect(room).toBeTruthy();
+      expect(waypoint).toBeTruthy();
+      expect(character).toBeTruthy();
+
+      character!.position = { ...waypoint.position, z:ROOM_MIDDLE_ROW_CENTER_Z };
+      character!.waypoint = waypoint;
+      const state = createCharacterActivityState(character!);
+      const targetWaypoint = room.waypoints.find(candidate => candidate !== waypoint && candidate.position.x !== waypoint.position.x) || room.waypoints[1];
+      const walkEvent = createWalkEvent(room, 0, waypoint.position.x, waypoint.position.y, targetWaypoint!.position.x, targetWaypoint!.position.y,
+        { ...waypoint.position, z:ROOM_MIDDLE_ROW_CENTER_Z }, { ...targetWaypoint!.position, z:ROOM_MIDDLE_ROW_CENTER_Z });
+
+      expect(walkEvent).toBeTruthy();
+      appendEventsToCharacterState(level, character!, state, [walkEvent!, createFaceEvent(walkEvent!.duration, 'left'), createBodyOrientationEvent(walkEvent!.duration, 'kneeling')]);
+
+      const pose = findStatePoseAtTime(character!, state, state.time);
+      expect(pose.position).toEqual({ ...targetWaypoint!.position, z:ROOM_MIDDLE_ROW_CENTER_Z });
+      expect(pose.facingDirection).toBe('left');
+      expect(pose.bodyOrientation).toBe('kneeling');
     });
   });
 });

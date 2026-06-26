@@ -24,7 +24,7 @@ import { calcCanvasAspectRatio, createCamera, syncCameraTargetToActiveRoom, upda
 import MouseDownEvent from "./types/playerEvents/MouseDownEvent";
 import MouseMoveEvent from "./types/playerEvents/MouseMoveEvent";
 import MouseWheelEvent from "./types/playerEvents/MouseWheelEvent";
-import { COLOR_BLACK } from "./drawing/drawConstants";
+import { COLOR_BLACK } from "./drawing/drawColorConstants";
 import { drawGameState, updateScalingFactorsAsNeeded } from "./drawing/gameStateDrawUtil";
 import { createPauseEffect, createPlayEffect } from "./effects/playPauseEffectUtil";
 import { createCharacterSelectEffect } from "./effects/characterSelectEffectUtil";
@@ -33,6 +33,7 @@ import { createEmitBubbleEffect } from "./effects/emitBubbleEffectUtil";
 import { createThinkingEffect, THINKING_LOOK_UP_DURATION_MSECS } from "./effects/thinkingEffectUtil";
 import { createTalkingEffect } from "./effects/talkingEffectUtil";
 import { createThoughtBubbleEffect } from "./effects/thoughtBubbleEffectUtil";
+import { findCharacterDisplayPosition } from "./characterDisplayPositionUtil";
 import { isCharacterInteractive } from "./interactivityUtil";
 import Conclusion, { duplicateConclusion } from "./conclusions/types/Conclusion";
 import ImageSet from "./types/ImageSet";
@@ -53,9 +54,10 @@ import { syncConclusionUnlocks, updateGameStateForChangeConclusions } from "./co
 import { syncDiscoveries } from "./discoveriesUtil";
 import { rebuildDynamicStateForTime } from "./dynamicStateRebuildUtil";
 import { normalizeId } from "./idUtil";
-import { calcRoomsBoundingRectWithRoofs } from "./roomRoofUtil";
+import { calcRenderedRoomsBoundingRect } from "./roomRoofUtil";
 import { clamp } from "@/common/numberUtil";
 import Discoveries, { createEmptyDiscoveries } from "./types/Discoveries";
+import { createEmptyRoomShellCache } from "./types/RoomShellCache";
 
 const CAMERA_ZOOM_STEP = 0.1;
 
@@ -196,7 +198,8 @@ function _updateGameStateForNextCharacter(gameState:GameState, _event:NextCharac
   const nextCharacter = charactersInRoom[(activeCharacterIndex + 1) % charactersInRoom.length];
   if (nextCharacter.id === activeCharacter.id) return;
   gameState.activeCharacterI = gameState.characters.indexOf(nextCharacter);
-  gameState.activeEffects.push(createCharacterSelectEffect(nextCharacter, Date.now(), gameState.scalingFactors));
+  gameState.activeEffects.push(createCharacterSelectEffect(nextCharacter,
+    findCharacterDisplayPosition(nextCharacter, activeRoom), Date.now(), gameState.scalingFactors));
 }
 
 function _updateGameStateForMouseWheel(gameState:GameState, event:MouseWheelEvent) {
@@ -237,10 +240,13 @@ function _syncSpeechBubbleEffects(gameState:GameState, isScrubbing:boolean = fal
 
   if (!gameState.isPlaying && !isScrubbing) return;
 
-  _findSpeechEffectRooms(gameState).flatMap(room => findCharactersInRoom(room, gameState.characters)).forEach(character => {
-    const speech = findCharacterPose(character, gameState.time).speech;
-    if (!speech) return;
-    gameState.activeEffects.push(createSpeechBubbleEffect(character, speech, gameState.scalingFactors, gameState.time));
+  _findSpeechEffectRooms(gameState).forEach(room => {
+    findCharactersInRoom(room, gameState.characters).forEach(character => {
+      const speech = findCharacterPose(character, gameState.time).speech;
+      if (!speech) return;
+      gameState.activeEffects.push(createSpeechBubbleEffect(character,
+        findCharacterDisplayPosition(character, room), speech, gameState.scalingFactors, gameState.time));
+    });
   });
 }
 
@@ -253,6 +259,19 @@ function _syncEmitBubbleEffects(gameState:GameState, isScrubbing:boolean = false
   gameState.characters.forEach(character => {
     const activeEmitEvent = _findActiveEmitEvent(character, gameState.time);
     if (!activeEmitEvent) return;
+    if (!activeEmitEvent.itemId) {
+      const room = findRoomAtPosition(gameState.rooms, character.position.x, character.position.y);
+      if (!room || !audibleRoomIds.has(room.id)) return;
+      gameState.activeEffects.push(createEmitBubbleEffect(
+        room,
+        null,
+        null,
+        activeEmitEvent.emitText,
+        gameState.scalingFactors,
+        gameState.time
+      ));
+      return;
+    }
     const emitItemState = _findEmitItemState(gameState, activeEmitEvent.itemId);
     if (!emitItemState || !audibleRoomIds.has(emitItemState.room.id)) return;
     gameState.activeEffects.push(createEmitBubbleEffect(
@@ -288,10 +307,13 @@ function _syncThoughtBubbleEffects(gameState:GameState, isScrubbing:boolean = fa
 
   if (!gameState.isLevelComplete && !gameState.isPlaying && !isScrubbing) return;
 
-  _findVisibleRooms(gameState).flatMap(room => findCharactersInRoom(room, gameState.characters)).forEach(character => {
-    const thought = findCharacterPose(character, gameState.time).thought;
-    if (!thought) return;
-    gameState.activeEffects.push(createThoughtBubbleEffect(character, thought, gameState.scalingFactors, gameState.time));
+  _findVisibleRooms(gameState).forEach(room => {
+    findCharactersInRoom(room, gameState.characters).forEach(character => {
+      const thought = findCharacterPose(character, gameState.time).thought;
+      if (!thought) return;
+      gameState.activeEffects.push(createThoughtBubbleEffect(character,
+        findCharacterDisplayPosition(character, room), thought, gameState.scalingFactors, gameState.time));
+    });
   });
 }
 
@@ -415,7 +437,7 @@ export function createGameState(level:Level, imageSet:ImageSet = createEmptyImag
     initialItemsById,
     initialCharacters:level.initialCharacters.map(character => duplicateCharacterUsingItemIndex(character, initialItemsById)),
     initialRooms:level.rooms.map(room => duplicateRoomUsingItemIndex(room, initialItemsById)),
-    camera:createCamera(calcRoomsBoundingRectWithRoofs(level.rooms, level.groundFloorY)),
+    camera:createCamera(calcRenderedRoomsBoundingRect(level.rooms, level.groundFloorY)),
     activeEffects:[],
     hoveredItemId:null,
     hoveredCharacterId:null,
@@ -433,6 +455,8 @@ export function createGameState(level:Level, imageSet:ImageSet = createEmptyImag
     scalingFactors:ZERO_SCALING_FACTORS,
     roomTitleWrapScalingFactors:ZERO_SCALING_FACTORS,
     roomTitleWrapsByRoomId:new Map<string, string[]>(),
+    roomShellCacheByRoomId:createEmptyRoomShellCache(),
+    roomShellCacheKey:'',
     lastMinutesChangedCallRealTime:0,
     lastMinutesChangedValue:NaN,
     lastActiveCharacterChangedValue:"",

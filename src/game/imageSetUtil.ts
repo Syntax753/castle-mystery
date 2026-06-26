@@ -4,18 +4,25 @@
 import { baseUrl } from "@/common/urlUtil";
 import { getGroundImageAssetUrl, isCandidateUrls } from "./imageUrlUtil";
 import { KEY_IMAGE_URL } from "./effects/lockEffectUtil";
+import { UNKNOWN_ITEM_ICON_URL } from "./discoveryIconUrlUtil";
 import ClozeImage from "./conclusions/types/ClozeImage";
 import ClozePartType from "./conclusions/types/ClozePartType";
 import Level from "./types/Level";
 import ImageSet from "./types/ImageSet";
+import { endTiming, startTiming } from "@/common/timingPerformanceUtil";
 
 export function createEmptyImageSet():ImageSet {
   return new Map<string, ImageBitmap>();
 }
 
 function _findDirectReferencedImageUrls(level:Level):string[] {
-  const imageUrls = new Set<string>([KEY_IMAGE_URL, getGroundImageAssetUrl()]);
+  const imageUrls = new Set<string>([KEY_IMAGE_URL, getGroundImageAssetUrl(), UNKNOWN_ITEM_ICON_URL]);
   if (level.backgroundImageUrl) imageUrls.add(level.backgroundImageUrl);
+  level.rooms.forEach(room => {
+    if (room.backWallTexture?.imageUrl) imageUrls.add(room.backWallTexture.imageUrl);
+    if (room.floorTexture?.imageUrl) imageUrls.add(room.floorTexture.imageUrl);
+    if (room.rightWallTexture?.imageUrl) imageUrls.add(room.rightWallTexture.imageUrl);
+  });
   level.rooms.forEach(room => room.items.forEach(item => {
     if (item.imageUrl) imageUrls.add(item.imageUrl);
   }));
@@ -107,9 +114,21 @@ async function _resolveLevelConclusionImageUrls(level:Level, imageSet:ImageSet,
 }
 
 export async function createImageSetFromLevel(level:Level):Promise<ImageSet> {
+  const imageLoadTiming = `image loading (${level.activeCharacterId}, ${level.rooms.length} rooms)`;
+  const directImageTiming = `image loading direct references (${level.activeCharacterId}, ${level.rooms.length} rooms)`;
+  const candidateImageTiming = `image loading candidate resolution (${level.activeCharacterId}, ${level.rooms.length} rooms)`;
+  startTiming(imageLoadTiming);
   const imageSet = createEmptyImageSet();
   const loadImageBitmap = _createLoadImageBitmapCache();
-  await _loadDirectReferencedImages(level, imageSet, loadImageBitmap);
-  await _resolveLevelConclusionImageUrls(level, imageSet, loadImageBitmap);
-  return imageSet;
+  try {
+    startTiming(directImageTiming);
+    await _loadDirectReferencedImages(level, imageSet, loadImageBitmap);
+    endTiming(directImageTiming);
+    startTiming(candidateImageTiming);
+    await _resolveLevelConclusionImageUrls(level, imageSet, loadImageBitmap);
+    endTiming(candidateImageTiming);
+    return imageSet;
+  } finally {
+    endTiming(imageLoadTiming);
+  }
 }

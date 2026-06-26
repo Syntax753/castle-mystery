@@ -5,7 +5,7 @@ import { createItineraryIndex } from '@/game/itineraryUtil';
 import { ROOM_MIDDLE_ROW_CENTER_Z } from '@/game/roomSpaceConstants';
 import Character, { createDefaultCharacter } from '@/game/types/Character';
 import GameState from '@/game/types/GameState';
-import Item from '@/game/types/Item';
+import Item, { createDefaultItem } from '@/game/types/Item';
 import Itinerary from '@/game/types/Itinerary';
 import Level from '@/game/types/Level';
 import Room, { createDefaultRoom } from '@/game/types/Room';
@@ -13,7 +13,7 @@ import ItineraryEventType from '@/game/types/itineraryEvents/ItineraryEventType'
 import { collectRoomOccupancyChangeTimes, createRoomOccupancyByRoomId } from '../roomOccupancyUtil';
 
 function _createItem(id:string):Item {
-  return { id, title:id, displayChar:id[0], imageUrl:null, randomSalt:0, position:{ x:0, y:0, z:0 }, drawOffset:{ x:0, y:0, z:0 }, description:id, isDiscovered:false };
+  return { ...createDefaultItem(), id, title:id, description:id };
 }
 
 function _createRoom(id:string, x:number, items:Item[] = []):Room {
@@ -61,13 +61,15 @@ describe('roomOccupancyUtil', () => {
       expect(collectRoomOccupancyChangeTimes(level)).toEqual([0, 1_000, 3_000]);
     });
 
-    it('ignores event types that cannot change room occupancy', () => {
+    it('adds no mid-timeline tick for a walk, but still samples the timeline end (the final settled state)', () => {
       const itinerary:Itinerary = [
         { type:ItineraryEventType.WALK, startTime:2_000, duration:1_000, fromPosition:{ x:0, y:0, z:0 }, toPosition:{ x:1, y:0, z:0 } },
       ];
       const level = { startTime:500, characters:[_createCharacter('alice', 10, null, itinerary)] } as Pick<Level, 'startTime' | 'characters'>;
 
-      expect(collectRoomOccupancyChangeTimes(level)).toEqual([500]);
+      // The walk itself adds no room-occupancy-change tick; 3_000 is the timeline end (walk completion),
+      // sampled so a character's final room is captured.
+      expect(collectRoomOccupancyChangeTimes(level)).toEqual([500, 3_000]);
     });
   });
 });

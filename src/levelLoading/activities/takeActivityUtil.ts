@@ -10,21 +10,12 @@ import Waypoint from "@/game/types/Waypoint";
 import { FLOOR_WAYPOINT_Y_OFFSET, WAYPOINT_MIDDLE_ROW_Z } from "@/game/waypointUtil";
 import ItineraryEvent from "@/game/types/itineraryEvents/ItineraryEvent";
 import WalkEvent from "@/game/types/itineraryEvents/WalkEvent";
-import {
-  ActivityContext,
-  addStateOwnedItem,
-  calcActivityStartTime,
-  ensureTimestampIsAvailable,
-  findCurrentRoom,
-  findEarliestAbsoluteActivityStartTime,
-  findRoomItemById,
-  findStateOwnedItem,
-  findWaypointPath,
-  planMovementWithinRoom,
-  removeStateOwnedItem,
-  scheduleEventsToStartAtTime,
-  stripTrailingPeriod
-} from "./activityUtil";
+import type ActivityContext from "./activity/types/ActivityContext";
+import { addStateOwnedItem, findCurrentRoom, findStateOwnedItem, removeStateOwnedItem } from "./activity/activityStateUtil";
+import { calcActivityStartTime, ensureTimestampIsAvailable, findEarliestAbsoluteActivityStartTime, scheduleEventsToStartAtTime } from "./activity/activitySchedulingUtil";
+import { findWaypointPath, planMovementWithinRoom } from "./activity/activityMovementUtil";
+import { findRoomItemById } from "./activity/activityTargetingUtil";
+import { stripTrailingPeriod } from "./activity/activityTextParseUtil";
 
 type ParsedTakeParts = {
   itemRef:string,
@@ -39,6 +30,18 @@ type TakeSource = {
   type:'held',
   item:Item
 };
+
+function _throwIfHandDestinationIsOccupied(destination:ItemHoldLocation, context:ActivityContext, item:Item) {
+  if (destination === 'inventory') return;
+
+  const existingItem = destination === 'left-hand'
+    ? context.state.leftHandItem
+    : context.state.rightHandItem;
+  if (!existingItem || existingItem.id === item.id) return;
+
+  const handLabel = destination === 'left-hand' ? 'left hand' : 'right hand';
+  throw new Error(`${context.character.title} can't take ${item.title} in ${handLabel} because already holding ${existingItem.title}`);
+}
 
 function _isExitWaypoint(room:ReturnType<typeof findCurrentRoom>, waypoint:Waypoint):boolean {
   return waypoint.position.z === WAYPOINT_MIDDLE_ROW_Z
@@ -177,6 +180,7 @@ export function tryCreateTakeActivity(activityText:string, context:ActivityConte
 	})()
 	: removeStateOwnedItem(context.state, itemRef);
   assertNonNullable(item, `expected item ${itemRef} to be movable`);
+  _throwIfHandDestinationIsOccupied(destination, context, item);
   addStateOwnedItem(context.state, item, destination);
   return [...scheduledWalkEvents, createTakeItemEvent(takeEventTime, item.id, destination)];
 }

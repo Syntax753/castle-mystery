@@ -8,9 +8,10 @@ import { createPositionedLabels, formatMinutes, minutesToPercent, percentToMinut
 import TimeLabel from "@/game/types/TimeLabel";
 import TimeLabelPositions from "./types/TimeLabelPositions";
 import Itinerary from "@/game/types/Itinerary";
+import Character from "@/game/types/Character";
 import Room from "@/game/types/Room";
 import { createItineraryMarkerModel } from "./itineraryMarkerUtil";
-import { COLOR_BLACK, COLOR_SPEECH_BUBBLE_FILL } from "@/game/drawing/drawConstants";
+import { COLOR_BLACK, COLOR_SPEECH_BUBBLE_FILL } from "@/game/drawing/drawColorConstants";
 
 const NO_QUANTIZING = -1;
 
@@ -20,7 +21,9 @@ type Props = {
   minutes: number; // Affects position of the slider thumb. Clamped to a value between fromMinutes and toMinutes.
   step?: number; // If specified will quantize the value to nearest step expressed in minutes. E.g., 15 to quantize to 15 minute increments, .5 to 30 second.
   itinerary:Itinerary|null;
+  characters:Character[];
   rooms:Room[];
+  roomsRevision?:number;
   initialRoomId:string|null;
   labels:TimeLabel[];
   isPlaying:boolean;
@@ -43,9 +46,10 @@ function _renderEncounterMarker(left:number, key:string) {
   </span>;
 }
 
-function _renderItineraryMarkers(sliderWidth:number, fromMinutes:number, toMinutes:number, itinerary:Itinerary|null, rooms:Room[], initialRoomId:string|null) {
+function _renderItineraryMarkers(sliderWidth:number, fromMinutes:number, toMinutes:number,
+  itinerary:Itinerary|null, characters:Character[], rooms:Room[], initialRoomId:string|null) {
   const durationMsecs = toMinutes * 60_000;
-  const markerModel = createItineraryMarkerModel(itinerary, rooms, initialRoomId, durationMsecs);
+  const markerModel = createItineraryMarkerModel(itinerary, rooms, initialRoomId, durationMsecs, characters);
   const toLeft = (time:number) => minutesToPercent(_msecsToMinutes(time), fromMinutes, toMinutes) / 100 * sliderWidth;
 
   return <div className={styles.markerLayer}>
@@ -79,7 +83,7 @@ function _renderTimeLabels(timeLabelPositions:TimeLabelPositions|null) {
     const position = timeLabelPositions.positions[index];
     if (position < 0) return null;
     return <span
-      key={`${labelMinutes}-${label}`}
+      key={`${index}-${labelMinutes}-${label}`}
       className={styles.timeLabel}
       style={{left: `${position}px`}}
     >{label}</span>;
@@ -93,7 +97,9 @@ function TimeSlider(props:Props) {
     minutes,
     step = NO_QUANTIZING,
     itinerary,
+    characters,
     rooms,
+    roomsRevision = 0,
     initialRoomId,
     labels,
     isPlaying,
@@ -107,7 +113,10 @@ function TimeSlider(props:Props) {
   const [timeLabelPositions, setTimeLabelPositions] = useState<TimeLabelPositions|null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
   const percent = minutesToPercent(minutes, fromMinutes, toMinutes);
-  const itineraryMarkers = useMemo(() => _renderItineraryMarkers(sliderWidth, fromMinutes, toMinutes, itinerary, rooms, initialRoomId), [sliderWidth, fromMinutes, toMinutes, itinerary, rooms, initialRoomId]);
+  const itineraryMarkers = useMemo(
+    () => _renderItineraryMarkers(sliderWidth, fromMinutes, toMinutes, itinerary, characters, rooms, initialRoomId),
+    [sliderWidth, fromMinutes, toMinutes, itinerary, characters, rooms, roomsRevision, initialRoomId]
+  );
 
   function _onSliderUpdate(nextValue:number) {
     const nextMinutes = percentToMinutes(nextValue, fromMinutes, toMinutes, step);

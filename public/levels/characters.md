@@ -10,8 +10,9 @@ age=35
 occupation=Labor foreman
 ethnicityBackground=Sicilian Muslim
 
-## Amos of Jesi
+## Amos
 
+* title=Amos of Jesi
 * description=He'd rather not beat people up, but he certainly will.
 * faceImage=amosTheGuard.png
 
@@ -23,6 +24,15 @@ ethnicityBackground=Sicilian Muslim
 
 occupation=Apprentice carver
 ethnicityBackground=Greek Sicilian
+
+## Andronikos
+* title=Andronikos of Thessalonica
+* description=A man very practiced in speaking with upset people.
+* faceImage=andronikos.png
+
+ETHNICITY: Sicilian Greek
+AGE: 35
+OCCUPATION: Usher
 
 ## Anna
 
@@ -38,12 +48,6 @@ ethnicityBackground=Greek Sicilian
 
 * description=A middle-aged woman wearing a gown of expensive fabric.
 * faceImage=constanceI.png
-
-## King Frederick
-
-* title=King Frederick
-* description=A boy wearing fine clothing.
-* faceImage=kingFred.png
 
 ## Emperor Frederick
 
@@ -75,7 +79,7 @@ ethnicityBackground=Greek Sicilian
 ## Giorgios
 
 * title=Giorgios tou Nikolaou
-* description=A man in his 40s, wiry form, discerning eyes.
+* description=A man in his 40s, wiry form, unfocused eyes.
 * faceImage=giorgios.png
 
 ## Giovanni
@@ -84,11 +88,54 @@ ethnicityBackground=Greek Sicilian
 * description=A man in his 30s, with extremely strong arms and less-impressive legs.
 * faceImage=giovanni.png
 
-## Heinrich
+## Gualtiero
+* title=Gualtiero of Masala
+* description=He seems like the sort of person that whispers in ears a lot.
+* faceImage=gualtiero.png
 
+ETHNICITY: Norman-Sicilian
+OCCUPATION: Chamberlain and Royal Advisor
+AGE=58
+
+## Heinrich
 * title=Heinrich Sohn des Konrad
 * description=An 11-year-old boy.
 * faceImage=heinrich.png
+
+## Harold
+* title=Harold of Norwich
+* description=His garb indicates some lower court function.
+* faceImage=harold.png
+
+ETHNICITY: English
+OCCUPATION: Herald
+AGE: 45
+
+## Helena
+
+* title=Helena of Gaeta
+* description=Suspicious of others and suspicious herself.
+* faceImage=helena.png
+
+Occupation: Keeper of Textiles (Textile Store L)
+Age: 29
+Ethnicity: Greek-Italian
+
+## Hugo
+
+* title=Hugo of Speyer
+* description=A man who believes in the practical applications of violence.
+* faceImage=hugo.png
+
+Occupation: Guard Sergeant (Guard Chamber E)
+Age: 44
+Ethnicity: German
+
+## King Frederick
+
+* title=King Frederick
+* description=A boy wearing fine clothing.
+* faceImage=kingFred.png
 
 ## Male Peasant
 
@@ -115,6 +162,28 @@ ethnicityBackground=Greek Sicilian
 age=47
 occupation=Cook and house manager
 ethnicityBackground=Latin Sicilian
+
+## Guard 1
+* faceImage=guard1.png
+
+## Guard 2
+* faceImage=guard2.png
+
+## Guard 3
+* faceImage=guard3.png
+
+## Guard 4
+* faceImage=guard4.png
+
+## Toro
+
+* title=Matteo il Toro
+* faceImage=matteo.png
+* description=A powerful brute. His two moods are angry and sleeping.
+
+Occupation: Cellarer and laborer (Wine Cellar K)
+Age: 38
+Ethnicity: Umbrian Italian
 
 ## Niccolo
 
@@ -148,10 +217,21 @@ ethnicityBackground=Calabrian Italian
 * description=A large man in his fifties that seems no stranger to hard work. Yet his belly tells of good meals, and his hands are free of callouses.
 * faceImage=pietro.png
 
-## Pope Innocent III
+## Pope
 
+* title=Pope Innocent III
 * description=A clergyman with a strong whiff of perfume about him.
 * faceImage=pope.png
+
+## Raniero
+
+* title=Raniero de Stefano
+* description=What does he do? Nobody cares. And he likes it that way.
+* faceImage=raniero.png
+
+Occupation: Steward (Steward's Office P)
+Age: 52
+Ethnicity: Roman Italian
 
 ## Salomone
 
@@ -188,8 +268,9 @@ ethnicityBackground=Dalmatian
 * description=A young woman, in her twenties. She just looks sticky for some reason.
 * faceImage=stickyAgatha.png
 
-## Ugolino di Conti
+## Ugolino
 
+* title=Ugolino di Conti
 * faceImage=ugolino.png
 * description=Crafty, calm, biding his time.
 

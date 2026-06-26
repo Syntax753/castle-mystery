@@ -31,6 +31,10 @@ function _resolveUnlockConclusionIds(unlockConclusionsText:string|undefined, con
   return parseOptions(unlockConclusionsText).map(conclusionRef => _findConclusionByIdOrTitle(conclusions, conclusionRef).id);
 }
 
+function _isConclusionReference(candidate:Conclusion|null):candidate is Conclusion {
+  return candidate !== null;
+}
+
 function _isGeneratedIdentitiesSubsection(authoredTitle:string, clozeTemplate:string):boolean {
   return normalizeId(authoredTitle) === 'identities' && !clozeTemplate.trim();
 }
@@ -257,13 +261,7 @@ export function loadConclusionsFromSection(conclusionsSection:string, rooms:Read
       return createGeneratedIdentityConclusion(characters, resolvedCategoryOptionsByName, {
         title:parsedConclusion.displayTitle,
         revealRoomIds:parsedConclusion.revealRoomIds
-      }) || _createConclusion(
-        parsedConclusion.authoredTitle,
-        parsedConclusion.displayTitle,
-        parsedConclusion.parts,
-        [],
-        parsedConclusion.revealRoomIds
-      );
+      });
     }
 
     return _createConclusion(
@@ -276,15 +274,17 @@ export function loadConclusionsFromSection(conclusionsSection:string, rooms:Read
   });
 
   const incomingUnlockedConclusionIds = new Set<string>();
-  const authoredConclusions = parsedConclusions.map((parsedConclusion, index) => {
+  const authoredConclusions = parsedConclusions.flatMap((parsedConclusion, index) => {
     const preliminaryConclusion = preliminaryConclusions[index];
-    const unlockConclusionIds = _resolveUnlockConclusionIds(parsedConclusion.unlockConclusionsText, preliminaryConclusions);
+    if (!preliminaryConclusion) return [];
+    const resolvedPreliminaryConclusions:Pick<Conclusion, 'id' | 'title'>[] = preliminaryConclusions.filter(_isConclusionReference);
+    const unlockConclusionIds = _resolveUnlockConclusionIds(parsedConclusion.unlockConclusionsText, resolvedPreliminaryConclusions);
     unlockConclusionIds.forEach(conclusionId => incomingUnlockedConclusionIds.add(conclusionId));
 
-    return {
+    return [{
       ...preliminaryConclusion,
       unlockConclusionIds
-    };
+    }];
   });
 
   return authoredConclusions.map(conclusion => ({
@@ -295,14 +295,14 @@ export function loadConclusionsFromSection(conclusionsSection:string, rooms:Read
 
 export function createGeneratedIdentityConclusion(characters:ReadonlyArray<Character>, categoryOptionsByName:Map<string, string[]>,
   overrides:{ title?:string|null, unlockConclusionIds?:string[], revealRoomIds?:string[] } = {}):Conclusion|null {
-  const interactiveCharacters = characters.filter(isCharacterInteractive);
-  if (!interactiveCharacters.length) return null;
-  const interactiveCharacterTitles = _sortGeneratedConclusionOptions(interactiveCharacters.map(character => character.title));
+  const interactiveCharactersWithUnknownTitles = characters.filter(character => isCharacterInteractive(character) && !character.isTitleKnown);
+  if (!interactiveCharactersWithUnknownTitles.length) return null;
+  const interactiveCharacterTitles = _sortGeneratedConclusionOptions(interactiveCharactersWithUnknownTitles.map(character => character.title));
   const identityCategoryOptionsByName = new Map(categoryOptionsByName);
   identityCategoryOptionsByName.set('characters', interactiveCharacterTitles);
 
   const parts:ClozePart[] = [];
-  interactiveCharacters.forEach((character, characterIndex) => {
+  interactiveCharactersWithUnknownTitles.forEach((character, characterIndex) => {
     if (characterIndex > 0) {
       parts.push({ type:ClozePartType.separator });
     }
@@ -317,6 +317,6 @@ export function createGeneratedIdentityConclusion(characters:ReadonlyArray<Chara
 
   return {
     ..._createConclusion('identities', overrides.title ?? 'Identities', parts, overrides.unlockConclusionIds || [], overrides.revealRoomIds || []),
-    isComplete:interactiveCharacters.every(character => character.isTitleKnown)
+    isComplete:false
   };
 }

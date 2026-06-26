@@ -4,19 +4,26 @@
 import { DRAW_WAYPOINTS } from "@/developer/config";
 import CanvasLayoutPlanner from "@/game/CanvasLayoutPlanner";
 import { isCharacterInteractive, isItemInteractive } from "@/game/interactivityUtil";
+import { roomHeightToLayerCount, roomWidthToColumnCount } from "@/game/roomGridUtil";
 import { drawCharacter, drawObscuredActiveCharacter } from "./characterDrawUtil";
 import { processRoomEffects } from "../effects/effectUtil";
 import {
+  ACTIVE_BACK_WALL_TEXTURE_LIGHTNESS,
+  ACTIVE_FLOOR_TEXTURE_LIGHTNESS,
+  ACTIVE_RIGHT_WALL_TEXTURE_LIGHTNESS,
   COLOR_ACTIVE_FLOOR_FILL,
   COLOR_ACTIVE_RIGHT_WALL_FILL,
   COLOR_ACTIVE_ROOM_FILL,
   COLOR_BLACK,
   COLOR_DARK_GRAY,
+  INACTIVE_BACK_WALL_TEXTURE_LIGHTNESS,
+  INACTIVE_FLOOR_TEXTURE_LIGHTNESS,
+  INACTIVE_RIGHT_WALL_TEXTURE_LIGHTNESS,
   COLOR_INACTIVE_FLOOR_FILL,
   COLOR_INACTIVE_RIGHT_WALL_FILL,
   COLOR_INACTIVE_ROOM_FILL,
   COLOR_ROOM_TITLE_TEXT
-} from "./drawConstants";
+} from "./drawColorConstants";
 import { interpolateColor } from "./colorUtil";
 import { gameToCanvasPosition } from "./drawUtil";
 import { drawTemporaryRightWallDoorVectorOverlay, getExitCanvasRect, getProjectedExitCanvasRect } from "./exitDrawUtil";
@@ -27,6 +34,7 @@ import { drawFloorPanel, drawRightWallPanel } from "./roomPanelDrawUtil";
 import { calcPanelOffset, projectRoomPointWithDepth } from "./roomPanelProjectionUtil";
 import { drawRoomRoofs } from "./roomRoofDrawUtil";
 import { drawStairPart } from "./stairDrawUtil";
+import { createTiledTextureFaceCanvas } from "./textureFaceDrawUtil";
 import Character from "../types/Character";
 import GameState from "../types/GameState";
 import Position from "../types/Position";
@@ -38,6 +46,8 @@ import ImageSet from "../types/ImageSet";
 import ExitType from "../types/ExitType";
 import StairPart, { StairPartType } from "../types/StairPart";
 import { processAfterCharacterEffects, processBeforeCharacterEffects } from "../effects/effectUtil";
+import { findCharacterDisplayPosition } from "@/game/characterDisplayPositionUtil";
+import { findItemDisplayPosition } from "@/game/itemDisplayPositionUtil";
 import { findRoom } from "../roomUtil";
 import { getCharacterCanvasRect } from "./characterDrawUtil";
 import { getItemCanvasRectInRoom } from "./itemDrawUtil";
@@ -50,6 +60,38 @@ const WAYPOINT_BACKGROUND_START_COLOR = "#ffb3c1";
 const WAYPOINT_BACKGROUND_END_COLOR = "#880000";
 const WAYPOINT_HIGHLIGHT_START_COLOR = "#8fd8ff";
 const WAYPOINT_HIGHLIGHT_END_COLOR = "#003d99";
+
+function _drawRoomBackWall(room:Room, imageSet:ImageSet|null, scaledTopLeft:[number, number], scaledWidth:number,
+  scaledHeight:number, context:CanvasRenderingContext2D, textureLightness:number) {
+  const backWallTexture = room.backWallTexture;
+  const backWallImage = backWallTexture ? imageSet?.get(backWallTexture.imageUrl) || null : null;
+  if (!backWallTexture || !backWallImage || backWallImage.width <= 0 || backWallImage.height <= 0) {
+    context.fillRect(scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
+    return;
+  }
+
+  const roomColumnCount = roomWidthToColumnCount(room.rect.width);
+  const roomLayerCount = roomHeightToLayerCount(room.rect.height);
+  const faceImage = createTiledTextureFaceCanvas(
+    backWallImage,
+    backWallTexture,
+    roomColumnCount,
+    roomLayerCount,
+    textureLightness,
+    `${room.id}|backWallTexture`
+  );
+  if (!faceImage) {
+    context.fillRect(scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
+    return;
+  }
+
+  context.save();
+  context.beginPath();
+  context.rect(scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
+  context.clip();
+  context.drawImage(faceImage.image, scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
+  context.restore();
+}
 
 function _getWaypointCanvasPosition(x:number, y:number, z:number, scalingFactors:ScalingFactors):[number, number] {
   const [canvasX, canvasY] = gameToCanvasPosition(x, y, scalingFactors);
@@ -153,32 +195,52 @@ function _calcStairPartSortX(stairPart:StairPart):number {
   }
 }
 
-export function drawRoomShell(room:Room, rooms:ReadonlyArray<Room>, isActive:boolean, characters:Character[], drawnExitIds:Set<string>,
-  groundFloorY:number, scalingFactors:ScalingFactors, context:CanvasRenderingContext2D, showFullContents:boolean = false,
-  layoutPlanner:CanvasLayoutPlanner|null = null) {
-  if (!room.isDiscovered) return;
-  const isRoomObscured = room.isObscured && !showFullContents;
+export function drawCacheableRoomShell(room:Room, rooms:ReadonlyArray<Room>, isActive:boolean,
+  groundFloorY:number, scalingFactors:ScalingFactors, context:CanvasRenderingContext2D,
+  showFullContents:boolean = false, includeUndiscovered:boolean = false, imageSet:ImageSet|null = null,
+  includeRoof:boolean = true, renderObscuredState:boolean = true) {
+  if (!includeUndiscovered && !room.isDiscovered) return;
+  const isRoomObscured = renderObscuredState && room.isObscured && !showFullContents;
   const scaledTopLeft = gameToCanvasPosition(room.rect.x, room.rect.y, scalingFactors);
   const scaledBottomRight = gameToCanvasPosition(room.rect.x + room.rect.width, room.rect.y + room.rect.height, scalingFactors);
   const scaledWidth = scaledBottomRight[0] - scaledTopLeft[0];
   const scaledHeight = scaledBottomRight[1] - scaledTopLeft[1];
+  const backWallTextureLightness = showFullContents || isActive ? ACTIVE_BACK_WALL_TEXTURE_LIGHTNESS : INACTIVE_BACK_WALL_TEXTURE_LIGHTNESS;
+  const floorTextureLightness = showFullContents || isActive ? ACTIVE_FLOOR_TEXTURE_LIGHTNESS : INACTIVE_FLOOR_TEXTURE_LIGHTNESS;
+  const rightWallTextureLightness = showFullContents || isActive ? ACTIVE_RIGHT_WALL_TEXTURE_LIGHTNESS : INACTIVE_RIGHT_WALL_TEXTURE_LIGHTNESS;
   context.lineWidth = scalingFactors.roomLineWidth;
   context.fillStyle = isRoomObscured ? COLOR_BLACK : (showFullContents || isActive ? COLOR_ACTIVE_ROOM_FILL : COLOR_INACTIVE_ROOM_FILL);
   context.strokeStyle = COLOR_DARK_GRAY;
   if (!room.isOutside) {
-    context.fillRect(scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
+    _drawRoomBackWall(room, isRoomObscured ? null : imageSet, scaledTopLeft, scaledWidth, scaledHeight, context, backWallTextureLightness);
     context.strokeRect(scaledTopLeft[0], scaledTopLeft[1], scaledWidth, scaledHeight);
   }
   context.fillStyle = isRoomObscured
     ? COLOR_BLACK
     : (showFullContents || isActive ? COLOR_ACTIVE_FLOOR_FILL : COLOR_INACTIVE_FLOOR_FILL);
-  drawFloorPanel(room, scalingFactors, context);
+  drawFloorPanel(room, scalingFactors, context, isRoomObscured ? null : imageSet, floorTextureLightness);
   context.fillStyle = isRoomObscured
     ? COLOR_BLACK
     : (showFullContents || isActive ? COLOR_ACTIVE_RIGHT_WALL_FILL : COLOR_INACTIVE_RIGHT_WALL_FILL);
-  drawRightWallPanel(room, rooms, scalingFactors, context);
-  room.exits.forEach(exit => _drawRoomExit(room, exit, characters, showFullContents, rooms, scalingFactors, context, drawnExitIds, layoutPlanner));
+  drawRightWallPanel(room, rooms, scalingFactors, context, isRoomObscured ? null : imageSet, rightWallTextureLightness);
+  if (includeRoof) drawRoomRoofs(room, rooms, groundFloorY, scalingFactors, context);
+}
+
+export function drawRoomShell(room:Room, rooms:ReadonlyArray<Room>, isActive:boolean, characters:Character[], drawnExitIds:Set<string>,
+  groundFloorY:number, scalingFactors:ScalingFactors, context:CanvasRenderingContext2D, showFullContents:boolean = false,
+  layoutPlanner:CanvasLayoutPlanner|null = null, includeUndiscovered:boolean = false, imageSet:ImageSet|null = null) {
+  if (!includeUndiscovered && !room.isDiscovered) return;
+  drawCacheableRoomShell(room, rooms, isActive, groundFloorY, scalingFactors, context,
+    showFullContents, includeUndiscovered, imageSet, false);
+  drawRoomShellExits(room, rooms, characters, drawnExitIds, scalingFactors, context, showFullContents, layoutPlanner);
   drawRoomRoofs(room, rooms, groundFloorY, scalingFactors, context);
+}
+
+export function drawRoomShellExits(room:Room, rooms:ReadonlyArray<Room>, characters:Character[], drawnExitIds:Set<string>,
+  scalingFactors:ScalingFactors, context:CanvasRenderingContext2D, showFullContents:boolean = false,
+  layoutPlanner:CanvasLayoutPlanner|null = null) {
+  if (!room.isDiscovered) return;
+  room.exits.forEach(exit => _drawRoomExit(room, exit, characters, showFullContents, rooms, scalingFactors, context, drawnExitIds, layoutPlanner));
 }
 
 function _calcRoomTitleMaxWidth(room:Room, scalingFactors:ScalingFactors):number {
@@ -273,9 +335,29 @@ function _createDrawableContents(room:Room, charactersInRoom:Character[], effect
     stairPart
   }));
   const sortedNonStairContents = [
-    ...charactersInRoom.map(character => ({ type:'character' as const, depth:character.position.z, x:character.position.x, sortId:character.id, character })),
+    ...charactersInRoom.filter(character => character.isVisible).map(character => {
+      const displayPosition = findCharacterDisplayPosition(character, room);
+      return {
+        type:'character' as const,
+        depth:displayPosition.z,
+        x:displayPosition.x,
+        y:displayPosition.y,
+        sortId:character.id,
+        character
+      };
+    }),
     ...findVisibleRoomItemsInDrawOrder(room, effects, includeUndiscoveredItems)
-      .map(item => ({ type:'item' as const, depth:item.position.z, x:item.position.x, sortId:item.id, item }))
+      .map(item => {
+        const displayPosition = findItemDisplayPosition(item, room);
+        return {
+          type:'item' as const,
+          depth:displayPosition.z,
+          x:displayPosition.x,
+          y:displayPosition.y,
+          sortId:item.id,
+          item
+        };
+      })
   ].sort(compareNonStairDrawableContents);
 
   return mergeStairsWithSortedContents(stairContents, sortedNonStairContents);
@@ -295,10 +377,10 @@ function _drawRoomContents(room:Room, charactersInRoom:Character[], activeCharac
         drawRoomItem(room, content.item, scalingFactors, context, imageSet, content.item.id === hoveredItemId, time);
         return;
       case 'character':
-        if (layoutPlanner && isCharacterInteractive(content.character)) layoutPlanner.reserveRect(getCharacterCanvasRect(content.character, scalingFactors, time, imageSet));
+        if (layoutPlanner && isCharacterInteractive(content.character)) layoutPlanner.reserveRect(getCharacterCanvasRect(content.character, scalingFactors, time, imageSet, room));
         processBeforeCharacterEffects(content.character, effects, context, scalingFactors, imageSet);
         drawCharacter(content.character, scalingFactors, context, time, imageSet, effects,
-          content.character.id === activeCharacter?.id || content.character.id === hoveredCharacterId);
+          content.character.id === activeCharacter?.id || content.character.id === hoveredCharacterId, room);
         processAfterCharacterEffects(content.character, effects, context, scalingFactors, imageSet);
         return;
     }

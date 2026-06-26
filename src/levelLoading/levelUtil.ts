@@ -11,6 +11,7 @@ import { ROOM_MIDDLE_ROW_CENTER_Z } from "@/game/roomSpaceConstants";
 import { rand } from "@/common/randUtil";
 import { MINUTES_IN_DAY, MSECS_IN_DAY, MSECS_IN_MINUTE } from "@/common/timeUtil";
 import { MarkdownLineError, normalizeMarkdownName, parseSectionEntriesWithLines, parseSections, parseUniqueNameValueLines } from "@/common/markdownUtil";
+import { endTiming, startTiming } from "@/common/timingPerformanceUtil";
 import { formatMsecsAsTimestamp, parseTimestampToMsecs } from "@/levelLoading/timestampUtil";
 import { loadLevelTextWithSourceLineMap, type SourceLineMap } from "./levelImportUtil";
 import { loadItineraries } from "./levelItineraryLoader";
@@ -40,7 +41,7 @@ import { calcRoomsBoundingRect, findRoomByIdOrTitle } from "../game/roomUtil";
 import { getBackgroundImageAssetUrl } from "../game/imageUrlUtil";
 
 const DEFAULT_WIN_SYNOPSIS = "You completed the level.";
-const KNOWN_TOP_LEVEL_SECTION_NAMES = new Set(['general', 'map', 'rooms', 'characters', 'items', 'itinerary', 'conclusions']);
+const KNOWN_TOP_LEVEL_SECTION_NAMES = new Set(['general', 'map', 'roomStyles', 'rooms', 'characters', 'items', 'itinerary', 'conclusions']);
 
 function _sortGeneratedConclusionOptions(options:string[]):string[] {
   return [...options].sort((option1, option2) => option1.localeCompare(option2, undefined, { sensitivity:'base' }));
@@ -48,10 +49,10 @@ function _sortGeneratedConclusionOptions(options:string[]):string[] {
 
 function _createDefaultConclusionCategoryOptions(level:Level):Map<string, string[]> {
   return new Map([
-    ['rooms', level.rooms.map(room => room.title)],
+    ['rooms', _sortGeneratedConclusionOptions(level.rooms.map(room => room.title).filter(title => title.trim().length > 0))],
     ['items', _sortGeneratedConclusionOptions([
       ...level.rooms.flatMap(room => room.items),
-      ...level.characters.flatMap(character => character.items)
+      ...level.characters.flatMap(character => getOwnedItems(character))
     ].filter(isItemInteractive).map(item => item.title))],
     ['characters', _sortGeneratedConclusionOptions(level.characters.filter(isCharacterInteractive).map(character => character.title))]
   ]);
@@ -79,18 +80,19 @@ function _createEmptyLevel(duration:number = MSECS_IN_DAY):Level {
   };
 }
 
-function _createLevelItemsById(level:Level, itemDefinitions:Map<string, { title:string, description:string, displayChar:string, imageUrl:string|null, drawOffset:{ x:number, y:number, z:number } }>):Map<string, Item> {
+function _createLevelItemsById(level:Level, itemDefinitions:Map<string, { title:string, description:string, imageUrl:string|null, isVisible:boolean, drawOffset:{ x:number, y:number, z:number }, stackOffset:{ x:number, y:number, z:number } }>):Map<string, Item> {
   const itemsById = createItemsById(level.rooms, level.characters);
   itemDefinitions.forEach((itemDefinition, itemId) => {
     if (itemsById.has(itemId)) return;
     itemsById.set(itemId, {
       id:itemId,
       title:itemDefinition.title,
-      displayChar:itemDefinition.displayChar,
       imageUrl:itemDefinition.imageUrl,
       randomSalt:rand(),
+      isVisible:itemDefinition.isVisible,
       position:{ x:0, y:0, z:ROOM_MIDDLE_ROW_CENTER_Z },
       drawOffset:{ ...itemDefinition.drawOffset },
+      stackOffset:{ ...itemDefinition.stackOffset },
       description:itemDefinition.description,
       isDiscovered:false
     });
@@ -377,6 +379,7 @@ export function loadLevelFromText(text:string, levelFilename:string = '<inline>'
       () => parseSections(text, 1, true));
     const generalFirstLineNo = _findSectionFirstContentLineNo(text, 'general') || 1;
     const mapFirstLineNo = _findSectionFirstContentLineNo(text, 'map') || 1;
+    const roomStylesFirstLineNo = _findSectionFirstContentLineNo(text, 'room styles') || 1;
     const roomsFirstLineNo = _findSectionFirstContentLineNo(text, 'rooms') || 1;
     const charactersFirstLineNo = _findSectionFirstContentLineNo(text, 'characters') || 1;
     const itemsFirstLineNo = _findSectionFirstContentLineNo(text, 'items') || 1;
@@ -407,7 +410,7 @@ export function loadLevelFromText(text:string, levelFilename:string = '<inline>'
     _runWithLoadLevelSectionContext(levelFilename, roomsFirstLineNo,
       () => validateMapLegendRoomsAgainstRoomsSection(sections.map || "", sections.rooms || "", mapFirstLineNo, roomsFirstLineNo));
     _runWithLoadLevelSectionContext(levelFilename, roomsFirstLineNo,
-      () => applyRoomMetadataFromSections(level, sections.rooms || "", roomsFirstLineNo));
+      () => applyRoomMetadataFromSections(level, sections.rooms || "", roomsFirstLineNo, sections.roomStyles || "", roomStylesFirstLineNo));
     _runWithLoadLevelSectionContext(levelFilename, generalFirstLineNo,
       () => _validateGroundFloorRoomReference(level, generalSection.groundFloorRoomRef));
     const groundFloorY = _runWithLoadLevelSectionContext(levelFilename, generalFirstLineNo,
@@ -504,9 +507,22 @@ export function loadLevelFromText(text:string, levelFilename:string = '<inline>'
 }
 
 export async function loadLevelFromUrl(levelFileUrl:string):Promise<Level> {
-  const sourceMappedText = await loadLevelTextWithSourceLineMap(_levelUrlToFilename(levelFileUrl));
-  return loadLevelFromText(sourceMappedText.text, levelFileUrl, {
-    validateUnlockPhrases:true,
-    sourceLineMap:sourceMappedText.sourceLineMap
-  });
+  const levelLoadTiming = `level loading (${levelFileUrl})`;
+  const levelSourceTiming = `level source fetch+merge (${levelFileUrl})`;
+  const levelParseTiming = `level parse+build (${levelFileUrl})`;
+  startTiming(levelLoadTiming);
+  try {
+    startTiming(levelSourceTiming);
+    const sourceMappedText = await loadLevelTextWithSourceLineMap(_levelUrlToFilename(levelFileUrl));
+    endTiming(levelSourceTiming);
+    startTiming(levelParseTiming);
+    const level = loadLevelFromText(sourceMappedText.text, levelFileUrl, {
+      validateUnlockPhrases:true,
+      sourceLineMap:sourceMappedText.sourceLineMap
+    });
+    endTiming(levelParseTiming);
+    return level;
+  } finally {
+    endTiming(levelLoadTiming);
+  }
 }

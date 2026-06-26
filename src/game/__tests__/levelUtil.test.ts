@@ -32,6 +32,7 @@ import invalidGroundFloorRoomText from './fixtures/invalid-ground-floor-room.md?
 import itemImageText from './fixtures/item-image.md?raw';
 import itemEmitsActivityText from './fixtures/item-emits-activity.md?raw';
 import itemDrawOffsetText from './fixtures/item-draw-offset.md?raw';
+import itemStackOffsetText from './fixtures/item-stack-offset.md?raw';
 import outsideRoomMetadataText from './fixtures/outside-room-metadata.md?raw';
 import outsideRoomBelowGroundFloorText from './fixtures/outside-room-below-ground-floor.md?raw';
 import conclusionsCaseInsensitiveCategoriesText from './fixtures/conclusions-case-insensitive-categories.md?raw';
@@ -65,6 +66,8 @@ import duplicateRoomSubsectionsCaseText from './fixtures/duplicate-room-subsecti
 import doorsArrivalTimestampText from './fixtures/doors-arrival-timestamp.md?raw';
 import invalidLockableExitItemText from './fixtures/invalid-lockable-exit-item.md?raw';
 import invalidCeilingFloorExitText from './fixtures/invalid-ceiling-floor-exit.md?raw';
+import invalidNonadjacentExitText from './fixtures/invalid-nonadjacent-exit.md?raw';
+import lockRequiredItemInHandText from './fixtures/lock-required-item-in-hand.md?raw';
 import lockRequiredItemMissingText from './fixtures/lock-required-item-missing.md?raw';
 import unlockRequiredItemMissingText from './fixtures/unlock-required-item-missing.md?raw';
 import duplicateConclusionCategoryGroupNamesText from './fixtures/duplicate-conclusion-category-group-names.md?raw';
@@ -84,6 +87,7 @@ import loadLevelFromUrlImportedItineraryText from './fixtures/load-level-from-ur
 import identitiesAllTitlesKnownText from './fixtures/identities-all-titles-known.md?raw';
 import identitiesAuthoredMetadataText from './fixtures/identities-authored-metadata.md?raw';
 import identitiesExcludesNoninteractiveCharactersText from './fixtures/identities-excludes-noninteractive-characters.md?raw';
+import handItemDefaultCategoryText from './fixtures/hand-item-default-category.md?raw';
 import inventoryItemDefaultCategoryText from './fixtures/inventory-item-default-category.md?raw';
 import inventoryItemTitleCasingText from './fixtures/inventory-item-title-casing.md?raw';
 import alphabetizedCharacterDefaultCategoryText from './fixtures/alphabetized-character-default-category.md?raw';
@@ -92,6 +96,7 @@ import closedDoorExitText from './fixtures/closed-door-exit.md?raw';
 import lockableExitOneSidedText from './fixtures/lockable-exit-one-sided.md?raw';
 import lockableExitTwoSidedText from './fixtures/lockable-exit-two-sided.md?raw';
 import lockableExitWithItemText from './fixtures/lockable-exit-with-item.md?raw';
+import commaSeparatedExitsWithModifiersText from './fixtures/comma-separated-exits-with-modifiers.md?raw';
 import lowercaseTitleDefaultsText from './fixtures/lowercase-title-defaults.md?raw';
 import mapLegendRoomTitleDefaultText from './fixtures/map-legend-room-title-default.md?raw';
 import missingConclusionPhraseText from './fixtures/missing-conclusion-phrase.md?raw';
@@ -104,6 +109,7 @@ import conclusionRevealRoomsText from './fixtures/conclusion-reveal-rooms.md?raw
 import conclusionUnlockConclusionsText from './fixtures/conclusion-unlock-conclusions.md?raw';
 import shortDurationLabelsText from './fixtures/short-duration-labels.md?raw';
 import stackedRoomItemsText from './fixtures/stacked-room-items.md?raw';
+import invalidStackedMultipleCharactersText from './fixtures/invalid-stacked-multiple-characters.md?raw';
 import conclusionsTwoSubsectionsText from './fixtures/conclusions-two-subsections.md?raw';
 import titleDefaultsAndGeneratedIdentityText from './fixtures/title-defaults-and-generated-identity.md?raw';
 import winSynopsisText from './fixtures/win-synopsis.md?raw';
@@ -125,6 +131,7 @@ import ItineraryEventType from '../types/itineraryEvents/ItineraryEventType';
 import atRoomMarkerText from '../integration-tests/fixtures/at-room-marker.md?raw';
 import dropItemText from '../integration-tests/fixtures/drop-item.md?raw';
 import giveItemNearText from '../integration-tests/fixtures/give-item-near.md?raw';
+import giveItemRelativeTakeText from '../integration-tests/fixtures/give-item-relative-take.md?raw';
 import wanderingTrappedText from '../integration-tests/fixtures/wandering-trapped.md?raw';
 import conclusionsImageSeparatorText from './fixtures/conclusions-image-separator.md?raw';
 import timelineStartTimeFieldText from './fixtures/timeline-start-time-field.md?raw';
@@ -136,6 +143,7 @@ import timelineDerivedBoundsText from './fixtures/timeline-derived-bounds.md?raw
 import timelineRelativeOnlyText from './fixtures/timeline-relative-only.md?raw';
 import timelineInitialTimeOutsideBoundsText from './fixtures/timeline-initial-time-outside-bounds.md?raw';
 import timelineStartAfterItineraryText from './fixtures/timeline-start-after-itinerary.md?raw';
+import takeOccupiedLeftHandText from './fixtures/take-occupied-left-hand.md?raw';
 import birthOfConstantineRegressionText from './fixtures/birth-of-constantine-regression.md?raw';
 import escapeStairwellRegressionText from './fixtures/escape-stairwell-regression.md?raw';
 import facesActivityText from './fixtures/faces-activity.md?raw';
@@ -144,8 +152,20 @@ import deadCharacterActivityText from './fixtures/dead-character-activity.md?raw
 import initiallyDeadCharacterActivityText from './fixtures/initially-dead-character-activity.md?raw';
 import initialCharacterPoseText from './fixtures/initial-character-pose.md?raw';
 import bodyOrientationActivityText from './fixtures/body-orientation-activity.md?raw';
-import { getClozeImageCandidateUrls, getItemImageAssetUrl } from '../imageUrlUtil';
+import bodyOrientationOnItemActivityText from './fixtures/body-orientation-on-item-activity.md?raw';
+import visibleFlagsText from './fixtures/visible-flags.md?raw';
+import invalidCharacterVisibleText from './fixtures/invalid-character-visible.md?raw';
+import invalidItemVisibleText from './fixtures/invalid-item-visible.md?raw';
+import showHideActivityText from './fixtures/show-hide-activity.md?raw';
+import unknownVisibilityTargetActivityText from './fixtures/unknown-visibility-target-activity.md?raw';
+import { getClozeImageCandidateUrls, getItemImageAssetUrl, getRoomTextureAssetUrl } from '../imageUrlUtil';
 import roomGridDepthText from './fixtures/room-grid-depth.md?raw';
+import roomBackWallTextureText from './fixtures/room-back-wall-texture.md?raw';
+import roomBackWallTextureDefaultCountsText from './fixtures/room-back-wall-texture-default-counts.md?raw';
+import roomBackWallTextureFilterText from './fixtures/room-back-wall-texture-filter.md?raw';
+import roomStyleTextureText from './fixtures/room-style-texture.md?raw';
+import roomFloorTextureText from './fixtures/room-floor-texture.md?raw';
+import roomRightWallTextureText from './fixtures/room-right-wall-texture.md?raw';
 import { MSECS_IN_DAY } from '@/common/timeUtil';
 
 describe('levelUtil itinerary loading', () => {
@@ -221,6 +241,36 @@ describe('levelUtil itinerary loading', () => {
     expect(findCharacterPose(niccollo, 5_000).facingDirection).toBe('left');
   });
 
+  it('parses says activities directed to another character', () => {
+    const level = loadLevelFromText(
+      facesCharacterTargetText.replace('0:00:05 Niccollo faces Heinrich.', '0:00:05 Niccollo says "Hello!" to Heinrich.'),
+      'speech-character-target.md');
+    const niccollo = level.characters.find(character => character.id === 'niccollo');
+    if (!niccollo) expect.fail('expected niccollo character to exist');
+
+    expect(findCharacterPose(niccollo, 4_999).facingDirection).toBe('right');
+    expect(findCharacterPose(niccollo, 5_000).facingDirection).toBe('left');
+    expect(niccollo.itinerary.filter(event => event.startTime === 5_000).map(event => event.type)).toEqual([
+      ItineraryEventType.FACE,
+      ItineraryEventType.SPEECH
+    ]);
+  });
+
+  it('parses interrupts activities directed to another character', () => {
+    const level = loadLevelFromText(
+      facesCharacterTargetText.replace('0:00:05 Niccollo faces Heinrich.', '0:00:05 Niccollo interrupts "Hello!" to Heinrich.'),
+      'interrupts-character-target.md');
+    const niccollo = level.characters.find(character => character.id === 'niccollo');
+    if (!niccollo) expect.fail('expected niccollo character to exist');
+
+    expect(findCharacterPose(niccollo, 4_999).facingDirection).toBe('right');
+    expect(findCharacterPose(niccollo, 5_000).facingDirection).toBe('left');
+    expect(niccollo.itinerary.filter(event => event.startTime === 5_000).map(event => event.type)).toEqual([
+      ItineraryEventType.FACE,
+      ItineraryEventType.SPEECH
+    ]);
+  });
+
   it('parses dies activities and defaults unspecified alive to true', () => {
     const level = loadLevelFromText(diesActivityText);
     const king = level.characters.find(character => character.id === 'king');
@@ -251,6 +301,90 @@ describe('levelUtil itinerary loading', () => {
     expect(findCharacterPose(king, 0).bodyOrientation).toBe('sitting');
   });
 
+  it('parses visible flags for character and item sections and defaults unspecified visible to true', () => {
+    const level = loadLevelFromText(visibleFlagsText, 'visible-flags.md');
+
+    const king = level.characters.find(character => character.id === 'king');
+    if (!king) expect.fail('expected king character to exist');
+    expect(king.isVisible).toBe(false);
+
+    const guard = level.characters.find(character => character.id === 'guard');
+    if (!guard) expect.fail('expected guard character to exist');
+    expect(guard.isVisible).toBe(true);
+
+    const hiddenGem = level.itemsById.get('hidden gem');
+    if (!hiddenGem) expect.fail('expected hidden gem item to exist');
+    expect(hiddenGem.isVisible).toBe(false);
+
+    const coin = level.itemsById.get('coin');
+    if (!coin) expect.fail('expected coin item to exist');
+    expect(coin.isVisible).toBe(true);
+  });
+
+  it('throws for invalid character visible values', () => {
+    expect(() => loadLevelFromText(invalidCharacterVisibleText, 'invalid-character-visible.md'))
+      .toThrow(/character king visible must be true or false/);
+  });
+
+  it('throws for invalid item visible values', () => {
+    expect(() => loadLevelFromText(invalidItemVisibleText, 'invalid-item-visible.md'))
+      .toThrow(/item coin visible must be true or false/);
+  });
+
+  it('parses show/hide activities for character and item targets', () => {
+    const level = loadLevelFromText(showHideActivityText, 'show-hide-activity.md');
+    const king = level.characters.find(character => character.id === 'king');
+
+    if (!king) expect.fail('expected king character to exist');
+
+    const visibilityEvents = king.itinerary.filter(event => event.type === ItineraryEventType.SHOW || event.type === ItineraryEventType.HIDE);
+    expect(visibilityEvents).toEqual([
+      { type:ItineraryEventType.HIDE, startTime:1_000, duration:0, targetId:'guard' },
+      { type:ItineraryEventType.HIDE, startTime:2_000, duration:0, targetId:'hidden gem' },
+      { type:ItineraryEventType.SHOW, startTime:3_000, duration:0, targetId:'guard' }
+    ]);
+  });
+
+  it('rebuilds character and item visibility from show/hide events when scrubbing time', () => {
+    const level = loadLevelFromText(showHideActivityText, 'show-hide-activity.md');
+    const gameState = createGameState(level);
+
+    rebuildDynamicStateForTime(gameState, 500);
+    let guard = gameState.characters.find(character => character.id === 'guard') || null;
+    let hiddenGem = gameState.itemsById.get('hidden gem') || null;
+    expect(guard?.isVisible).toBe(true);
+    expect(hiddenGem?.isVisible).toBe(true);
+
+    rebuildDynamicStateForTime(gameState, 1_500);
+    guard = gameState.characters.find(character => character.id === 'guard') || null;
+    hiddenGem = gameState.itemsById.get('hidden gem') || null;
+    expect(guard?.isVisible).toBe(false);
+    expect(hiddenGem?.isVisible).toBe(true);
+
+    rebuildDynamicStateForTime(gameState, 2_500);
+    guard = gameState.characters.find(character => character.id === 'guard') || null;
+    hiddenGem = gameState.itemsById.get('hidden gem') || null;
+    expect(guard?.isVisible).toBe(false);
+    expect(hiddenGem?.isVisible).toBe(false);
+
+    rebuildDynamicStateForTime(gameState, 3_500);
+    guard = gameState.characters.find(character => character.id === 'guard') || null;
+    hiddenGem = gameState.itemsById.get('hidden gem') || null;
+    expect(guard?.isVisible).toBe(true);
+    expect(hiddenGem?.isVisible).toBe(false);
+
+    rebuildDynamicStateForTime(gameState, 500);
+    guard = gameState.characters.find(character => character.id === 'guard') || null;
+    hiddenGem = gameState.itemsById.get('hidden gem') || null;
+    expect(guard?.isVisible).toBe(true);
+    expect(hiddenGem?.isVisible).toBe(true);
+  });
+
+  it('throws for show/hide activities with unknown targets', () => {
+    expect(() => loadLevelFromText(unknownVisibilityTargetActivityText, 'unknown-visibility-target-activity.md'))
+      .toThrow(/unknown visibility target 'Ghost' in authored activity 'hide Ghost'/);
+  });
+
   it('throws when a dead character has a later itinerary activity after dying', () => {
     expect(() => loadLevelFromText(deadCharacterActivityText, 'dead-character-activity.md')).toThrow(/dead character king cannot perform itinerary activity/i);
   });
@@ -276,6 +410,32 @@ describe('levelUtil itinerary loading', () => {
     expect(findCharacterPose(king, 9_000).bodyOrientation).toBe('standing');
   });
 
+  it('moves to a stacked room item floor square before applying a body orientation on that item', () => {
+    const level = loadLevelFromText(bodyOrientationOnItemActivityText, 'body-orientation-on-item-activity.md');
+    const hall = findRoom(level.rooms, 'Hall');
+    const king = level.characters.find(character => character.id === 'king');
+    const chair = hall.items.find(item => item.id === 'chair') || null;
+    const cushion = hall.items.find(item => item.id === 'cushion') || null;
+    if (!king) expect.fail('expected king character to exist');
+    const walkEvents = king.itinerary.filter(event => event.type === ItineraryEventType.WALK) as Array<{ startTime:number, duration:number }>;
+    const sitEvent = king.itinerary.find(event => event.type === ItineraryEventType.BODY_ORIENTATION) as { startTime:number, bodyOrientation:typeof king.bodyOrientation } | undefined;
+    const lastWalkEvent = walkEvents[walkEvents.length - 1];
+    const targetWaypoint = hall.waypoints.find(waypoint => waypoint.position.x === chair?.position.x
+      && waypoint.position.y === chair?.position.y
+      && waypoint.position.z === chair?.position.z) || null;
+
+    expect(chair).not.toBeNull();
+    expect(cushion).not.toBeNull();
+    expect(cushion!.position.y).toBeLessThan(chair!.position.y);
+    expect(walkEvents.length).toBeGreaterThan(0);
+    expect(sitEvent).toBeDefined();
+    expect(sitEvent?.bodyOrientation).toBe('sitting');
+    expect(sitEvent?.startTime).toBe(lastWalkEvent.startTime + lastWalkEvent.duration);
+    expect(targetWaypoint).not.toBeNull();
+    expect(findCharacterPose(king, sitEvent!.startTime).position).toEqual(targetWaypoint!.position);
+    expect(findCharacterPose(king, sitEvent!.startTime).position.y).toBe(chair!.position.y);
+  });
+
   it('parses outside room metadata and defaults omitted outside flags to false', () => {
     const level = loadLevelFromText(outsideRoomMetadataText, 'outside-room-metadata.md');
 
@@ -290,6 +450,16 @@ describe('levelUtil itinerary loading', () => {
     const level = loadLevelFromText(emptyRoomTitleText, 'empty-room-title.md');
 
     expect(level.rooms[0]?.title).toBe('');
+  });
+
+  it('excludes rooms with empty titles from auto-generated conclusion room categories', () => {
+    const level = loadLevelFromText(`${emptyRoomTitleText}\n\n# conclusions\n\n## Mystery\n\n* conclusion=[Hall] was empty.`, 'empty-room-title.md');
+    const conclusion = level.conclusions.find(candidate => candidate.id === 'mystery') || null;
+    if (!conclusion) expect.fail('expected Mystery conclusion to exist');
+    const firstBlank = conclusion.parts[0] as ClozeBlank;
+
+    expect(firstBlank.availableAnswers).toEqual(['Hall']);
+    expect(firstBlank.correctAnswerIndexes).toEqual([0]);
   });
 
   it('loads a minified kingacide snapshot with conclusions and file-relative itinerary activity', () => {
@@ -336,6 +506,16 @@ describe('levelUtil itinerary loading', () => {
 
   it('includes character inventory item titles in default conclusion item categories', () => {
     const level = loadLevelFromText(inventoryItemDefaultCategoryText);
+    const conclusion = level.conclusions.find(candidate => candidate.id === 'missing item') || null;
+    if (!conclusion) expect.fail('expected Missing Item conclusion to exist');
+    const firstBlank = conclusion.parts[0] as ClozeBlank;
+
+    expect(firstBlank.availableAnswers).toEqual(['Book', 'Crown']);
+    expect(firstBlank.correctAnswerIndexes).toEqual([0]);
+  });
+
+  it('includes character hand-held item titles in default conclusion item categories', () => {
+    const level = loadLevelFromText(handItemDefaultCategoryText);
     const conclusion = level.conclusions.find(candidate => candidate.id === 'missing item') || null;
     if (!conclusion) expect.fail('expected Missing Item conclusion to exist');
     const firstBlank = conclusion.parts[0] as ClozeBlank;
@@ -395,7 +575,7 @@ describe('levelUtil itinerary loading', () => {
     expect((conclusion.parts[4] as { imageUrl:string[] }).imageUrl).toEqual(getClozeImageCandidateUrls('queenFace.png'));
   });
 
-  it('defaults titles from ids and generates identities for all characters', () => {
+  it('defaults titles from ids and generates identities only for characters whose titles are not already known', () => {
     const level = loadLevelFromText(titleDefaultsAndGeneratedIdentityText);
     const hall = findRoom(level.rooms, 'Hall');
     const king = level.characters.find(character => character.id === 'king');
@@ -412,11 +592,9 @@ describe('levelUtil itinerary loading', () => {
     expect(crown?.title).toBe('Crown');
     expect(identities?.title).toBe('Identities');
     expect(identities?.isLocked).toBe(false);
-    expect(identityBlanks).toHaveLength(2);
-    expect(identityBlanks[0].availableAnswers).toEqual(['His Majesty', 'Queen']);
+    expect(identityBlanks).toHaveLength(1);
+    expect(identityBlanks[0].availableAnswers).toEqual(['Queen']);
     expect(identityBlanks[0].correctAnswerIndexes).toEqual([0]);
-    expect(identityBlanks[1].availableAnswers).toEqual(['His Majesty', 'Queen']);
-    expect(identityBlanks[1].correctAnswerIndexes).toEqual([1]);
   });
 
   it('excludes noninteractive characters from auto-generated cloze answer lists', () => {
@@ -439,13 +617,11 @@ describe('levelUtil itinerary loading', () => {
     expect(firstBlank.correctAnswerIndexes).toEqual([0]);
   });
 
-  it('marks identities complete when all character titles are already known', () => {
+  it('omits auto-generated identities when all character titles are already known', () => {
     const level = loadLevelFromText(identitiesAllTitlesKnownText);
     const identities = level.conclusions.find(conclusion => conclusion.id === 'identities') || null;
 
-    expect(identities).not.toBeNull();
-    expect(identities?.isLocked).toBe(false);
-    expect(identities?.isComplete).toBe(true);
+    expect(identities).toBeNull();
   });
 
   it('uses the generated identities conclusion as the default when an identities subsection only authors metadata', () => {
@@ -581,12 +757,116 @@ describe('levelUtil itinerary loading', () => {
     expect(level.itemsById.get('crown')?.imageUrl).toBe(getItemImageAssetUrl('crown.png'));
   });
 
+  it('loads back wall textures from room metadata', () => {
+    const level = loadLevelFromText(roomBackWallTextureText, 'room-back-wall-texture.md');
+    const hall = level.rooms[0];
+
+    expect(hall.backWallTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('greyBricks.png'),
+      horizontalCount:4,
+      verticalCount:4,
+      modifiers:[]
+    });
+  });
+
+  it('defaults omitted room texture counts to 4 by 4', () => {
+    const level = loadLevelFromText(roomBackWallTextureDefaultCountsText, 'room-back-wall-texture-default-counts.md');
+    const hall = level.rooms[0];
+
+    expect(hall.backWallTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('greyBricks.png'),
+      horizontalCount:4,
+      verticalCount:4,
+      modifiers:[]
+    });
+  });
+
+  it('loads back wall texture image filters from room metadata', () => {
+    const level = loadLevelFromText(roomBackWallTextureFilterText, 'room-back-wall-texture-filter.md');
+    const hall = level.rooms[0];
+
+    expect(hall.backWallTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('greyBricks.png'),
+      horizontalCount:4,
+      verticalCount:4,
+      modifiers:[{ type:'imageFilter', imageFilterId:'aged stone' }]
+    });
+  });
+
+  it('loads floor textures from room metadata', () => {
+    const level = loadLevelFromText(roomFloorTextureText, 'room-floor-texture.md');
+    const hall = level.rooms[0];
+
+    expect(hall.floorTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('floorBricks.png'),
+      horizontalCount:2,
+      verticalCount:2,
+      modifiers:[]
+    });
+  });
+
+  it('loads right wall textures from room metadata', () => {
+    const level = loadLevelFromText(roomRightWallTextureText, 'room-right-wall-texture.md');
+    const hall = level.rooms[0];
+
+    expect(hall.rightWallTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('wallBricks.png'),
+      horizontalCount:2,
+      verticalCount:2,
+      modifiers:[]
+    });
+  });
+
+  it('loads room textures from styles and lets room metadata override individual style textures', () => {
+    const level = loadLevelFromText(roomStyleTextureText, 'room-style-texture.md');
+    const nave = level.rooms.find(room => room.id === 'nave');
+    const hall = level.rooms.find(room => room.id === 'hall');
+
+    expect(nave?.backWallTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('greyBricks.png'),
+      horizontalCount:4,
+      verticalCount:4,
+      modifiers:[{ type:'imageFilter', imageFilterId:'aged stone' }]
+    });
+    expect(nave?.floorTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('floorBricks.png'),
+      horizontalCount:2,
+      verticalCount:2,
+      modifiers:[]
+    });
+    expect(nave?.rightWallTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('wallBricks.png'),
+      horizontalCount:2,
+      verticalCount:2,
+      modifiers:[]
+    });
+
+    expect(hall?.backWallTexture).toEqual(nave?.backWallTexture);
+    expect(hall?.rightWallTexture).toEqual(nave?.rightWallTexture);
+    expect(hall?.floorTexture).toEqual({
+      imageUrl:getRoomTextureAssetUrl('greyBricks.png'),
+      horizontalCount:4,
+      verticalCount:4,
+      modifiers:[]
+    });
+  });
+
   it('loads item draw offsets from item subsections into placed items and the item index', () => {
     const level = loadLevelFromText(itemDrawOffsetText, 'item-draw-offset.md');
     const crown = level.rooms[0].items.find(item => item.id === 'crown') || null;
 
     expect(crown?.drawOffset).toEqual({ x:1.5, y:-0.25, z:0.1 });
     expect(level.itemsById.get('crown')?.drawOffset).toEqual({ x:1.5, y:-0.25, z:0.1 });
+    expect(crown?.stackOffset).toEqual({ x:0, y:0, z:0 });
+    expect(level.itemsById.get('crown')?.stackOffset).toEqual({ x:0, y:0, z:0 });
+  });
+
+  it('loads item stack offsets from item subsections into placed items and the item index', () => {
+    const level = loadLevelFromText(itemStackOffsetText, 'item-stack-offset.md');
+    const crown = level.rooms[0].items.find(item => item.id === 'crown') || null;
+
+    expect(crown?.stackOffset).toEqual({ x:1.5, y:-0.25, z:0.1 });
+    expect(level.itemsById.get('crown')?.stackOffset).toEqual({ x:1.5, y:-0.25, z:0.1 });
   });
 
   it('throws when item image is authored as a path instead of a filename', () => {
@@ -638,6 +918,19 @@ describe('levelUtil itinerary loading', () => {
       expect(error).toBeInstanceOf(LoadLevelException);
       expect((error as LoadLevelException).message).toContain('outside-room-below-ground-floor.md:3');
       expect((error as LoadLevelException).message).toContain("outside room 'Courtyard' is below general groundFloorRoom 'Upper Hallway'");
+    }
+  });
+
+  it('throws on the exits line when a room specifies a non-adjacent exit room', () => {
+    try {
+      loadLevelFromText(invalidNonadjacentExitText, 'invalid-nonadjacent-exit.md');
+      expect.fail('expected level loading to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LoadLevelException);
+      expect((error as LoadLevelException).levelFilename).toBe('invalid-nonadjacent-exit.md');
+      expect((error as LoadLevelException).errorLineNo).toBe(20);
+      expect((error as LoadLevelException).message).toContain('invalid-nonadjacent-exit.md:20');
+      expect((error as LoadLevelException).message).toContain('Kitchen, specified as an exit in Antechamber, is not adjacent.');
     }
   });
 
@@ -713,7 +1006,7 @@ describe('levelUtil itinerary loading', () => {
       expect.fail('expected level loading to throw');
     } catch (error) {
       expect(error).toBeInstanceOf(LoadLevelException);
-      expect((error as LoadLevelException).message).toContain('invalid-lockable-exit-item.md:12');
+      expect((error as LoadLevelException).message).toContain('invalid-lockable-exit-item.md:15');
       expect((error as LoadLevelException).message).toContain(`unknown item 'Missing Key' in 'Hallway (lockable with Missing Key)'`);
     }
   });
@@ -726,6 +1019,19 @@ describe('levelUtil itinerary loading', () => {
       expect(error).toBeInstanceOf(LoadLevelException);
       expect((error as LoadLevelException).message).toContain('invalid-ceiling-floor-exit.md:18');
       expect((error as LoadLevelException).message).toContain('ceiling or floor exits are not supported');
+    }
+  });
+
+  it('throws on the exits line with guidance when multiple exits are comma-separated', () => {
+    try {
+      loadLevelFromText(commaSeparatedExitsWithModifiersText, 'comma-separated-exits-with-modifiers.md');
+      expect.fail('expected level loading to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LoadLevelException);
+      expect((error as LoadLevelException).levelFilename).toBe('comma-separated-exits-with-modifiers.md');
+      expect((error as LoadLevelException).errorLineNo).toBe(16);
+      expect((error as LoadLevelException).message).toContain('comma-separated-exits-with-modifiers.md:16');
+      expect((error as LoadLevelException).message).toContain("multiple exits must be separated by '|'");
     }
   });
 
@@ -784,6 +1090,53 @@ describe('levelUtil itinerary loading', () => {
     expect(vase?.position.z).toBe(ROOM_BACK_ROW_CENTER_Z);
     expect(table?.position.y).toBe(floorY);
     expect(vase?.position.y).toBe(floorY - calcItemCuboidHeightGame(hall));
+  });
+
+  it('loads stacked room items with a trailing character while keeping the character on the floor waypoint', () => {
+    const stackedCharacterText = stackedRoomItemsText
+      .replace('Y.X.', '...X')
+      .replace('* X=Table|Vase', '* X=Table|Vase|Hero')
+      .replace('* Y=Hero\n', '');
+    const level = loadLevelFromText(stackedCharacterText, 'stacked-room-items-character.md');
+    const hall = findRoom(level.rooms, 'Hall');
+    const table = hall.items.find(item => item.id === 'table') || null;
+    const vase = hall.items.find(item => item.id === 'vase') || null;
+    const hero = level.characters.find(character => character.id === 'hero') || null;
+    const floorY = hall.rect.y + hall.rect.height - FLOOR_WAYPOINT_Y_OFFSET;
+
+    expect(hall.items.map(item => item.id)).toEqual(['table', 'vase']);
+    expect(table?.position.y).toBe(floorY);
+    expect(vase?.position.y).toBe(floorY - calcItemCuboidHeightGame(hall));
+    expect(hero?.position.x).toBe(table?.position.x);
+    expect(hero?.position.y).toBe(floorY);
+    expect(hero?.position.z).toBe(ROOM_BACK_ROW_CENTER_Z);
+  });
+
+  it('rejects stacked room entries that place a character before items', () => {
+    const invalidStackOrderText = stackedRoomItemsText
+      .replace('Y.X.', '...X')
+      .replace('* X=Table|Vase', '* X=Hero|Table')
+      .replace('* Y=Hero\n', '');
+
+    try {
+      loadLevelFromText(invalidStackOrderText, 'invalid-stacked-character-order.md');
+      expect.fail('expected level loading to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LoadLevelException);
+      expect((error as LoadLevelException).message).toContain('invalid-stacked-character-order.md:11');
+      expect((error as LoadLevelException).message).toContain("must place any character last");
+    }
+  });
+
+  it('rejects stacked room entries that place more than one character on a tile', () => {
+    try {
+      loadLevelFromText(invalidStackedMultipleCharactersText, 'invalid-stacked-multiple-characters.md');
+      expect.fail('expected level loading to throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(LoadLevelException);
+        expect((error as LoadLevelException).message).toContain('invalid-stacked-multiple-characters.md:11');
+      expect((error as LoadLevelException).message).toContain("may include at most one character");
+    }
   });
 
   it('uses item floor position scoring to choose the take waypoint before taking a stacked item', () => {
@@ -865,6 +1218,11 @@ describe('levelUtil itinerary loading', () => {
     expect(thoughtEvent?.startTime).toBe(takeEvent!.startTime + takeEvent!.duration);
   });
 
+  it('throws when taking an item into an already occupied hand', () => {
+    expect(() => loadLevelFromText(takeOccupiedLeftHandText, 'take-occupied-left-hand.md'))
+      .toThrow("Hugo can't take Black Paint Jar in left hand because already holding Brass Key");
+  });
+
   it('loads give activities without movement when the recipient is already nearby', () => {
     const level = loadLevelFromText(giveItemNearText);
     const king = level.characters.find(character => character.id === 'king');
@@ -875,6 +1233,20 @@ describe('levelUtil itinerary loading', () => {
     expect(giveEvent).toEqual({ type:ItineraryEventType.GIVE_ITEM, startTime:5_000, duration:0, itemId:'book', recipientCharacterId:'queen' });
     expect(king?.items.map(item => item.id)).not.toContain('book');
     expect(queen?.items.map(item => item.id)).toContain('book');
+  });
+
+  it('resolves a relative take after a zero-duration give using authored order', () => {
+    const level = loadLevelFromText(giveItemRelativeTakeText, 'give-item-relative-take.md');
+    const king = level.characters.find(character => character.id === 'king');
+    const queen = level.characters.find(character => character.id === 'queen');
+    const giveEvent = king?.itinerary.find(event => event.type === ItineraryEventType.GIVE_ITEM) as { startTime:number } | undefined;
+    const takeEvent = queen?.itinerary.find(event => event.type === ItineraryEventType.TAKE_ITEM) as { startTime:number, duration:number } | undefined;
+
+    expect(giveEvent?.startTime).toBe(5_000);
+    expect(takeEvent?.startTime).toBe(5_001);
+    expect(takeEvent?.duration).toBe(ITEM_EFFECT_DURATION);
+    expect(queen?.rightHandItem?.id).toBe('book');
+    expect(queen?.items.map(item => item.id)).not.toContain('book');
   });
 
   it('loads emits activities for carried items that are not visible in hand', () => {
@@ -899,6 +1271,14 @@ describe('levelUtil itinerary loading', () => {
     expect(lockEvent?.roomExitId).toBe(exit?.id);
     expect(unlockEvent?.startTime).toBe(20_000);
     expect(unlockEvent?.roomExitId).toBe(exit?.id);
+  });
+
+  it('allows lock activities when the required item is carried in hand', () => {
+    const level = loadLevelFromText(lockRequiredItemInHandText, 'lock-required-item-in-hand.md');
+    const keeper = level.characters.find(character => character.id === 'keeper');
+
+    expect(keeper?.rightHandItem?.id).toBe('red key');
+    expect(keeper?.itinerary.some(event => event.type === ItineraryEventType.LOCK)).toBe(true);
   });
 
   it('parses itinerary lines with extra punctuation and whitespace outside quotes', () => {
@@ -1026,7 +1406,7 @@ describe('levelUtil itinerary loading', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(LoadLevelException);
       expect((error as LoadLevelException).message).toContain('lock-required-item-missing.md:52');
-      expect((error as LoadLevelException).message).toContain('exit to Second Cell requires item red key in inventory for itinerary activity');
+      expect((error as LoadLevelException).message).toContain('exit to Second Cell requires item red key to be carried for itinerary activity');
     }
   });
 
@@ -1037,7 +1417,7 @@ describe('levelUtil itinerary loading', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(LoadLevelException);
       expect((error as LoadLevelException).message).toContain('unlock-required-item-missing.md:52');
-      expect((error as LoadLevelException).message).toContain('exit to Second Cell requires item red key in inventory for itinerary activity');
+      expect((error as LoadLevelException).message).toContain('exit to Second Cell requires item red key to be carried for itinerary activity');
     }
   });
 

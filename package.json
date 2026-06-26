@@ -6,7 +6,9 @@
   "scripts": {
     "cmgen": "node --experimental-strip-types scripts/cmgen.ts",
     "solve": "vite-node scripts/solve.ts",
+    "evaluate": "vite-node scripts/evaluateLevel.ts",
     "dev": "vite",
+    "dev-gen": "vite --mode dev-gen",
     "copyViteManifestForDev": "cp -r dist/.vite public",
     "build": "tsc && vite build && npm run copyViteManifestForDev",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
@@ -19,15 +21,11 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@mlc-ai/web-llm": "^0.2.79",
-    "@mlc-ai/web-runtime": "^0.18.0-dev2",
-    "@mlc-ai/web-tokenizers": "^0.1.6",
     "decent-portal": "^2.4.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
-    "@types/chrome": "^0.1.24",
     "@types/node": "^24.7.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
@@ -35,7 +33,6 @@
     "@typescript-eslint/parser": "^8.46.1",
     "@vitejs/plugin-react": "^5.0.4",
     "@vitest/coverage-v8": "^3.2.4",
-    "@webgpu/types": "^0.1.65",
     "eslint": "^9.37.0",
     "eslint-plugin-react-hooks": "^7.0.0",
     "eslint-plugin-react-refresh": "^0.4.23",

@@ -15,6 +15,7 @@ import DropItemEvent from "./types/itineraryEvents/DropItemEvent";
 import GiveItemEvent from "./types/itineraryEvents/GiveItemEvent";
 import LockEvent from "./types/itineraryEvents/LockEvent";
 import UnlockEvent from "./types/itineraryEvents/UnlockEvent";
+import VisibilityEvent from "./types/itineraryEvents/VisibilityEvent";
 import ItineraryEventType from "./types/itineraryEvents/ItineraryEventType";
 import ItineraryEvent from "./types/itineraryEvents/ItineraryEvent";
 import Position, { duplicatePosition } from "./types/Position";
@@ -24,8 +25,9 @@ import type { BodyOrientation, FacingDirection } from "./types/Character";
 import { MSECS_IN_SECOND } from "@/common/timeUtil";
 import { clamp } from "@/common/numberUtil";
 import { findRoomAtPosition, findRoomAtPositionOrTouchingBoundary, findRoomNearestToPosition } from "./roomUtil";
+import { roomWidthToColumnCount } from "./roomGridUtil";
 import { ROOM_BACK_Z } from "./roomSpaceConstants";
-import { FLOOR_WAYPOINT_Y_OFFSET, roomWidthToColumnCount } from "./waypointUtil";
+import { FLOOR_WAYPOINT_Y_OFFSET } from "./waypointUtil";
 import ItineraryIndex from "./types/ItineraryIndex";
 import { ITEM_EFFECT_DURATION } from "./effects/dropItemUtil";
 import FaceEvent from "./types/itineraryEvents/FaceEvent";
@@ -99,7 +101,7 @@ export function createSpeechEvent(startTime:number, speech:string):SpeechEvent {
   };
 }
 
-export function createEmitEvent(startTime:number, itemId:string, emitText:string):EmitEvent {
+export function createEmitEvent(startTime:number, itemId:string|null, emitText:string):EmitEvent {
   return {
     type:ItineraryEventType.EMIT,
     startTime,
@@ -180,12 +182,89 @@ export function createUnlockEvent(startTime:number, roomExitId:string):UnlockEve
   return { type:ItineraryEventType.UNLOCK, startTime, duration:0, roomExitId };
 }
 
+export function createShowEvent(startTime:number, targetId:string):VisibilityEvent {
+  return { type:ItineraryEventType.SHOW, startTime, duration:0, targetId };
+}
+
+export function createHideEvent(startTime:number, targetId:string):VisibilityEvent {
+  return { type:ItineraryEventType.HIDE, startTime, duration:0, targetId };
+}
+
 export function createRoomEntryEvent(startTime:number, roomId:string):RoomEntryEvent {
   return { type:ItineraryEventType.ROOM_ENTRY, startTime, duration:0, roomId };
 }
 
 export function findRoomAtPositionOrNearest(rooms:Room[], x:number, y:number):Room {
   return _findRoomAtPosition(rooms, x, y);
+}
+
+function _findItineraryPose(character:Character, time:number):CharacterPose {
+  let position = duplicatePosition(character.position);
+  let isAlive = character.isAlive;
+  let facingDirection = character.facingDirection;
+  let bodyOrientation = character.bodyOrientation;
+  let speech:string|null = null;
+  let thought:string|null = null;
+
+  for (const event of character.itinerary) {
+    if (event.startTime > time) break;
+
+    switch (event.type) {
+      case ItineraryEventType.WALK: {
+        const walkEvent = event as WalkEvent;
+        if (walkEvent.toPosition.x > walkEvent.fromPosition.x) facingDirection = 'right';
+        else if (walkEvent.toPosition.x < walkEvent.fromPosition.x) facingDirection = 'left';
+        bodyOrientation = 'standing';
+
+        const endTime = walkEvent.startTime + walkEvent.duration;
+        position = time < endTime
+          ? _interpolatePosition(walkEvent.fromPosition, walkEvent.toPosition, clamp((time - walkEvent.startTime) / walkEvent.duration, 0, 1))
+          : duplicatePosition(walkEvent.toPosition);
+        break;
+      }
+      case ItineraryEventType.DIE:
+        isAlive = false;
+        break;
+      case ItineraryEventType.FACE:
+        facingDirection = (event as FaceEvent).facingDirection;
+        break;
+      case ItineraryEventType.BODY_ORIENTATION:
+        bodyOrientation = (event as BodyOrientationEvent).bodyOrientation;
+        break;
+      case ItineraryEventType.SPEECH: {
+        const speechEvent = event as SpeechEvent;
+        speech = time < speechEvent.startTime + speechEvent.duration ? speechEvent.speech : null;
+        break;
+      }
+      case ItineraryEventType.THOUGHT: {
+        const thoughtEvent = event as ThoughtEvent;
+        thought = time < thoughtEvent.startTime + thoughtEvent.duration ? thoughtEvent.thought : null;
+        break;
+      }
+      case ItineraryEventType.EMIT:
+      case ItineraryEventType.CHARACTER_ENCOUNTER:
+      case ItineraryEventType.TAKE_ITEM:
+      case ItineraryEventType.DROP_ITEM:
+      case ItineraryEventType.GIVE_ITEM:
+      case ItineraryEventType.SHOW:
+      case ItineraryEventType.HIDE:
+      case ItineraryEventType.LOCK:
+      case ItineraryEventType.UNLOCK:
+      case ItineraryEventType.ROOM_ENTRY:
+        break;
+      default:
+        assert(false, `unsupported itinerary event type ${(event as ItineraryEvent).type}`);
+    }
+  }
+
+  return {
+    position,
+    isAlive,
+    facingDirection,
+    bodyOrientation,
+    speech,
+    thought
+  };
 }
 
 function _getEventEndPosition(event:ItineraryEvent, eventStartPosition:Position):Position {
@@ -203,6 +282,8 @@ function _getEventEndPosition(event:ItineraryEvent, eventStartPosition:Position)
     case ItineraryEventType.TAKE_ITEM:
     case ItineraryEventType.DROP_ITEM:
     case ItineraryEventType.GIVE_ITEM:
+    case ItineraryEventType.SHOW:
+    case ItineraryEventType.HIDE:
     case ItineraryEventType.LOCK:
     case ItineraryEventType.UNLOCK:
       return duplicatePosition(eventStartPosition);
@@ -233,100 +314,7 @@ export function findCharacterPose(character:Character, time:number):CharacterPos
       thought:null
     };
   }
-  return _findItineraryPosition(character, time);
-}
-
-function _findIsAliveAtTime(character:Character, itinerary:ItineraryEvent[], time:number):boolean {
-  let isAlive = character.isAlive;
-
-  for (const event of itinerary) {
-    if (event.startTime > time) break;
-    if (event.type === ItineraryEventType.DIE) isAlive = false;
-  }
-
-  return isAlive;
-}
-
-function _findFacingDirectionAtTime(character:Character, itinerary:ItineraryEvent[], time:number):FacingDirection {
-  let facingDirection = character.facingDirection;
-
-  for (const event of itinerary) {
-    if (event.startTime > time) break;
-    if (event.type === ItineraryEventType.FACE) {
-      facingDirection = (event as FaceEvent).facingDirection;
-      continue;
-    }
-    if (event.type !== ItineraryEventType.WALK) continue;
-    const walkEvent = event as WalkEvent;
-    if (walkEvent.toPosition.x > walkEvent.fromPosition.x) facingDirection = 'right';
-    else if (walkEvent.toPosition.x < walkEvent.fromPosition.x) facingDirection = 'left';
-  }
-
-  return facingDirection;
-}
-
-function _findBodyOrientationAtTime(character:Character, itinerary:ItineraryEvent[], time:number):BodyOrientation {
-  let bodyOrientation = character.bodyOrientation;
-
-  for (const event of itinerary) {
-    if (event.startTime > time) break;
-    if (event.type === ItineraryEventType.BODY_ORIENTATION) {
-      bodyOrientation = (event as BodyOrientationEvent).bodyOrientation;
-      continue;
-    }
-    if (event.type === ItineraryEventType.WALK) bodyOrientation = 'standing';
-  }
-
-  return bodyOrientation;
-}
-
-function _findPositionAtTime(initialPosition:Position, itinerary:ItineraryEvent[], time:number):Position {
-  let currentPosition = duplicatePosition(initialPosition);
-  for (const event of itinerary) {
-    if (event.type !== ItineraryEventType.WALK) continue;
-    const walkEvent = event as WalkEvent;
-    if (time < walkEvent.startTime) break;
-    const endTime = walkEvent.startTime + walkEvent.duration;
-    if (time < endTime) {
-      const elapsedFactor = clamp((time - walkEvent.startTime) / walkEvent.duration, 0, 1);
-      return _interpolatePosition(walkEvent.fromPosition, walkEvent.toPosition, elapsedFactor);
-    }
-    currentPosition = duplicatePosition(walkEvent.toPosition);
-  }
-  return currentPosition;
-}
-
-function _findSpeechAtTime(itinerary:ItineraryEvent[], time:number):string|null {
-  let currentSpeech:string|null = null;
-  for (const event of itinerary) {
-    if (event.startTime > time) break;
-    if (event.type !== ItineraryEventType.SPEECH) continue;
-    const speechEvent = event as SpeechEvent;
-    currentSpeech = time < speechEvent.startTime + speechEvent.duration ? speechEvent.speech : null;
-  }
-  return currentSpeech;
-}
-
-function _findThoughtAtTime(itinerary:ItineraryEvent[], time:number):string|null {
-  let currentThought:string|null = null;
-  for (const event of itinerary) {
-    if (event.startTime > time) break;
-    if (event.type !== ItineraryEventType.THOUGHT) continue;
-    const thoughtEvent = event as ThoughtEvent;
-    currentThought = time < thoughtEvent.startTime + thoughtEvent.duration ? thoughtEvent.thought : null;
-  }
-  return currentThought;
-}
-
-function _findItineraryPosition(character:Character, time:number):CharacterPose {
-  return {
-    position:_findPositionAtTime(character.position, character.itinerary, time),
-    isAlive:_findIsAliveAtTime(character, character.itinerary, time),
-    facingDirection:_findFacingDirectionAtTime(character, character.itinerary, time),
-    bodyOrientation:_findBodyOrientationAtTime(character, character.itinerary, time),
-    speech:_findSpeechAtTime(character.itinerary, time),
-    thought:_findThoughtAtTime(character.itinerary, time)
-  };
+  return _findItineraryPose(character, time);
 }
 
 export function createItineraryIndex(events:ItineraryEvent[], initialPosition?:Position):ItineraryIndex {

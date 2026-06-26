@@ -3,7 +3,7 @@
 
 import { clamp } from "@/common/numberUtil";
 import { getCharacterBodyCenterCanvasPosition } from "../drawing/characterDrawUtil";
-import { calcItemDrawMetrics, drawItemAtCanvasPosition, getItemCanvasPosition } from "../drawing/itemDrawUtil";
+import { drawItemAtCanvasPositionInRoom, getItemCanvasPosition } from "../drawing/itemDrawUtil";
 import Character from "../types/Character";
 import ImageSet from "../types/ImageSet";
 import Item from "../types/Item";
@@ -22,12 +22,11 @@ function _onProcessRoomEffect(room:Room, effect:Effect, context:CanvasRenderingC
   const progress = clamp(elapsed / ITEM_EFFECT_DURATION, 0, 1);
   const x = giveItemEffect.startCanvasPosition.x + (giveItemEffect.endCanvasPosition.x - giveItemEffect.startCanvasPosition.x) * progress;
   const y = giveItemEffect.startCanvasPosition.y + (giveItemEffect.endCanvasPosition.y - giveItemEffect.startCanvasPosition.y) * progress;
-  drawItemAtCanvasPosition(giveItemEffect.item, x, y, calcItemDrawMetrics(room, scalingFactors), context, imageSet);
+  drawItemAtCanvasPositionInRoom(giveItemEffect.item, room, x, y, scalingFactors, context, imageSet);
   return elapsed < ITEM_EFFECT_DURATION;
 }
 
 export function createGiveItemEffect(item:Item, room:Room, giver:Character, recipient:Character, time:number, scalingFactors:ScalingFactors):GiveItemEffect {
-  const metrics = calcItemDrawMetrics(room, scalingFactors);
   const [startCanvasX, startCanvasY] = getItemCanvasPosition({
     ...item,
     position:{ ...giver.position }
@@ -41,8 +40,8 @@ export function createGiveItemEffect(item:Item, room:Room, giver:Character, reci
     startTime:time,
     startCanvasPosition:{ x:startCanvasX, y:startCanvasY },
     endCanvasPosition:{
-      x:recipientBodyCenter.x + metrics.cuboidDepthXPixels / 2,
-      y:recipientBodyCenter.y + (metrics.cuboidHeightPixels + metrics.cuboidDepthYPixels) / 2
+      x:recipientBodyCenter.x,
+      y:recipientBodyCenter.y
     },
     onProcessRoomEffect:_onProcessRoomEffect
   };

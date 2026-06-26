@@ -3,19 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 import { createItineraryMarkerModel, SPEECH_CLUSTER_GAP_MSECS } from '../itineraryMarkerUtil';
 import Itinerary from '@/game/types/Itinerary';
-import Room from '@/game/types/Room';
+import Room, { createDefaultRoom } from '@/game/types/Room';
 import ItineraryEventType from '@/game/types/itineraryEvents/ItineraryEventType';
 
 function _createRoom(id:string, isObscured:boolean):Room {
   return {
+    ...createDefaultRoom(),
     id,
     title:id,
     rect:{ x:0, y:0, width:100, height:100 },
-    isOutside:false,
-    items:[],
-    exits:[],
-    stairParts:[],
-    waypoints:[],
     isDiscovered:false,
     isObscured
   };
@@ -90,6 +86,22 @@ describe('itineraryMarkerUtil', () => {
       expect(markerModel.speechRanges).toEqual([
         { startTime:500, endTime:900 },
         { startTime:2_100, endTime:2_500 }
+      ]);
+    });
+
+    it('filters encounter markers down to interactive encountered characters', () => {
+      const itinerary:Itinerary = [
+        { type:ItineraryEventType.CHARACTER_ENCOUNTER, startTime:1_000, duration:0, encounteredCharacterIds:['guide', 'statue'] },
+        { type:ItineraryEventType.CHARACTER_ENCOUNTER, startTime:2_000, duration:0, encounteredCharacterIds:['statue'] }
+      ];
+
+      const markerModel = createItineraryMarkerModel(itinerary, [], null, 3_000, [
+        { id:'guide', description:'Helpful and talkative.' },
+        { id:'statue', description:'' }
+      ]);
+
+      expect(markerModel.encounterMarkers).toEqual([
+        { startTime:1_000, encounteredCharacterIds:['guide'] }
       ]);
     });
   });
